@@ -3,7 +3,7 @@
 import itertools
 import operator
 from functools import reduce
-from typing import Callable
+from typing import Callable, TypeIs
 from pprint import pprint
 
 type Number = int | float
@@ -38,12 +38,20 @@ cypher: list[str] = [
 ]
 
 
-def is_valid_numeric_core(number: Number) -> bool:
-    return number > 0 and number % 1 == 0 and len(str(number)) <= 3
+def is_valid_numeric_core(number: Number) -> TypeIs[int]:
+    try:
+        val = float(number)
+        return val > 0 and val % 1 == 0 and len(str(int(val))) <= 3
+    except (ValueError, TypeError):
+        return False
 
 
-def is_processable(number: Number) -> bool:
-    return number > 0 and number % 1 == 0 and len(str(number)) > 3
+def is_processable(number: Number) -> TypeIs[int]:
+    try:
+        val = float(number)
+        return val > 0 and val % 1 == 0 and len(str(int(val))) > 3
+    except (ValueError, TypeError):
+        return False
 
 
 ## A = 1, B = 2,
@@ -63,7 +71,7 @@ def cypher_to_nums(cypher: list[str]) -> list[int]:
 ## 86455
 ## [[8, 6, 4, 55], [8, 6, 45, 5], [8, 64, 5, 5], [86, 4, 5, 5]]
 def split_number_into_groups(number: int) -> list[list[int]]:
-    # print(number)
+    int_number = int(number)
     groups_needed = 4
 
     resulting_groups: list[list[int]] = []
@@ -73,9 +81,9 @@ def split_number_into_groups(number: int) -> list[list[int]]:
 
     ## generate all possible split spots
     for curr_set_split_spots in itertools.combinations(
-        range(len(str(number)) - 1), groups_needed - 1
+        range(len(str(int_number)) - 1), groups_needed - 1
     ):
-        digits: list[str] = [d for d in str(number)]
+        digits: list[str] = [d for d in str(int_number)]
 
         ## insert split character in reverse order so not mess up subsequent inserts
         for split_spot in reversed(curr_set_split_spots):
@@ -89,17 +97,15 @@ def split_number_into_groups(number: int) -> list[list[int]]:
     return resulting_groups
 
 
-## given a number
-## find all possible ways to split into 4 groups
 ## for every group,
-##   # this is iteration func >>>
+##   # <<< this is iteration func >>>
 ##   run every operation order for every group
 ##      every time an operation per group finishes,
 #    check if it is a valid core number
 ##   if it is not a valid core number, check if it is processable
 ##   if processable, num recursion
 ##   else no core number
-def numeric_core_iteration(digit_group: list[int]) -> int:
+def numeric_core_iteration(digit_group: list[int]) -> int | None:
     ops_lookup: dict[BinaryOp, str] = {
         operator.add: "+",
         operator.sub: "-",
@@ -133,11 +139,17 @@ def numeric_core_iteration(digit_group: list[int]) -> int:
 
     ## for every combination of operation,
     ## get the resulting core with reduce
-    ## and print the matching operation/digit combination in order
-    for op_combo in valid_op_combos:
-        reduced_core: Number = reduce(apply_ops, zip(op_combo, digit_group), 0)
-
-        return numeric_core(reduced_core)
+    op_combo_cores: list[int] = [
+        potential_core
+        for op_combo in valid_op_combos
+        if (
+            potential_core := numeric_core(
+                reduce(apply_ops, zip(op_combo, digit_group), 0)
+            )
+        )
+        is not None
+    ]
+    return min(op_combo_cores) if len(op_combo_cores) > 0 else None
 
 
 # given a number
@@ -148,7 +160,8 @@ def numeric_core_iteration(digit_group: list[int]) -> int:
 #   if it is not a valid core number, check if it is processable
 #   if processable, num recursion
 #   else no core number
-def numeric_core(number: int) -> Number | None:
+# once you have the core number from each group, return the smallest
+def numeric_core(number: Number) -> int | None:
     if is_valid_numeric_core(number):
         return number
     if not is_processable(number):
@@ -163,7 +176,12 @@ def numeric_core(number: int) -> Number | None:
     digit_groups: list[list[int]] = split_number_into_groups(number)
     # print(digit_groups)
 
-    current_cores = [numeric_core_iteration(digit_group) for digit_group in digit_groups]
+    current_cores: list[int] = [
+        digit_group_core
+        for digit_group in digit_groups
+        if (digit_group_core := numeric_core_iteration(digit_group)) is not None
+    ]
+    return min(current_cores) if len(current_cores) > 0 else None
 
 
 def print_cypher(data) -> None:
@@ -189,8 +207,10 @@ def main() -> None:
 
     ## somehow skipping some 0's?
     ## running into multiple integer values
-    cypher_as_cores = [numeric_core(number) for number in cypher_as_nums]
-    pprint(cypher_as_cores)
+    # cypher_as_cores: list[int | None] = [numeric_core(number) for number in cypher_as_nums]
+    # pprint(cypher_as_cores)
+
+    test()
 
 
 if __name__ == "__main__":
