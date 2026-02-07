@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
+import itertools
 import operator
 from functools import reduce
-from itertools import combinations, permutations
-from pprint import pprint
 from typing import Callable, TypeIs
+from pprint import pprint
 
 type Number = int | float
 type BinaryOp = Callable[[Number, Number], Number]
@@ -54,6 +54,8 @@ def is_processable(number: Number) -> TypeIs[int]:
         return False
 
 
+## A = 1, B = 2,
+## returns each character as a number, then combined as a string
 def word_to_nums(word: str) -> int:
     return int(
         "".join([str(ord(letter) - ord("A") + 1) for letter in word.strip().upper()])
@@ -67,36 +69,26 @@ def cypher_to_nums(cypher: list[str]) -> list[int]:
 ## 86455
 ## [[8, 6, 4, 55], [8, 6, 45, 5], [8, 64, 5, 5], [86, 4, 5, 5]]
 def split_number_into_groups(number: int) -> list[list[int]]:
-    ## technically we can pass a float here and it passes,
-    ## but we actually need no decimals for length, even if 10.0 passes
     int_number = int(number)
-    digits: list[str] = [d for d in str(int_number)]
+    groups_needed = 4
+
+    resulting_groups: list[list[int]] = []
 
     ## in terms of possible spots to split a number, there are "len(number) - 1" possible locationss
     ## in terms of how many splits we need to pick, there is "groups_needed - 1" amount, so 3 for us
-    groups_needed = 4
-    all_split_spots: list[list[int]] = [
-        list(split_spots)
-        for split_spots in combinations(
-            range(len(str(int_number)) - 1), groups_needed - 1
-        )
-    ]
 
-    resulting_groups: list[list[int]] = []
-    for split_spots in all_split_spots:
-        # digits      = [1, 2, 3, 4, 5, 6]
-        # split_spots = [0,    2,    4]
-        # range      -> [0, 1¡]
-        #
-        test = [
-            digits[split_spots[ind] : split_spots[ind + 1]]
-            for ind in range(len(split_spots) - 1)
-        ]
+    ## generate all possible split spots
+    for curr_set_split_spots in itertools.combinations(
+        range(len(str(int_number)) - 1), groups_needed - 1
+    ):
+        digits: list[str] = [d for d in str(int_number)]
 
         ## insert split character in reverse order so not mess up subsequent inserts
-        for split_spot in reversed(split_spots):
+        for split_spot in reversed(curr_set_split_spots):
             digits.insert((split_spot + 1), "-")
 
+        ## ...the following is silly but easy
+        ## join the string digits, split them again by the '-' we just added (thus making the groups), and convert to int
         grouped_digits: list[int] = [int(d) for d in "".join(digits).split("-")]
         resulting_groups.append(grouped_digits)
 
@@ -112,23 +104,42 @@ def split_number_into_groups(number: int) -> list[list[int]]:
 ##   if processable, num recursion
 ##   else no core number
 def numeric_core_iteration(digit_group: list[int]) -> int | None:
-    ops: list[BinaryOp] = [operator.add, operator.sub, operator.mul, operator.truediv]
+    ops_lookup: dict[BinaryOp, str] = {
+        operator.add: "+",
+        operator.sub: "-",
+        operator.mul: "*",
+        operator.truediv: "/",
+    }
+    ops: list[BinaryOp] = list(ops_lookup.keys())
 
     ## every combo without add, with add at the beginning
     op_combos: list[list[BinaryOp]] = [
-        op_combo
-        for no_add_op_combo in permutations(ops[1:])
-        if (operator.truediv, 0)
-        not in zip(op_combo := ops[:1] + list(no_add_op_combo), digit_group)
+        ops[:1] + list(op) for op in itertools.permutations(ops[1:])
     ]
 
-    def apply_ops(result: Number, zipped_op_digit: tuple[BinaryOp, Number]) -> Number:
-        return zipped_op_digit[0](result, zipped_op_digit[1])
+    ## if there is a op_combo with a division and 0 in the same index, filter it out
+    ## no more divide by 0
+    valid_op_combos: list[list[BinaryOp]] = [
+        op_combo
+        for op_combo in op_combos
+        if not any(
+            op is operator.truediv and digit == 0
+            for op, digit in zip(op_combo, digit_group)
+        )
+    ]
 
-    ## for every combination of operation, get the resulting core with reduce
+    ## for a single op_combo, apply the ops in order
+    ## use enumerate on the op_combo to get curr_index so we can apply to matching index on digits
+    def apply_ops(
+        accumulated: Number, zipped_op_digit: tuple[BinaryOp, Number]
+    ) -> Number:
+        return zipped_op_digit[0](accumulated, zipped_op_digit[1])
+
+    ## for every combination of operation,
+    ## get the resulting core with reduce
     op_combo_cores: list[int] = [
         potential_core
-        for op_combo in op_combos
+        for op_combo in valid_op_combos
         if (
             potential_core := numeric_core(
                 reduce(apply_ops, zip(op_combo, digit_group), 0)
@@ -136,7 +147,6 @@ def numeric_core_iteration(digit_group: list[int]) -> int | None:
         )
         is not None
     ]
-
     return min(op_combo_cores) if len(op_combo_cores) > 0 else None
 
 
@@ -193,6 +203,8 @@ def main() -> None:
     print_cypher(data=cypher_as_nums)
     print("")
 
+    ## somehow skipping some 0's?
+    ## running into multiple integer values
     # cypher_as_cores: list[int | None] = [numeric_core(number) for number in cypher_as_nums]
     # pprint(cypher_as_cores)
 
@@ -201,3 +213,20 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+def test2():
+    321456
+    [ [3, 2, 1, 456], ... ]
+    -> [ [ +, -, *, / ], ... ]
+    
+
+# given a number
+# find all possible ways to split into 4 groups
+# for every group,
+#   run every operation order for every group
+#   for every operation result:
+#       qsd
+#       if it is not a valid core number, check if it is processable
+#       if processable, num recursion
+#       else no core number
+# once you have the core number from each group, return the smallest
