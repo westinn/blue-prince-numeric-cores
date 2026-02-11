@@ -1,47 +1,20 @@
 #!/usr/bin/env python3
 
+import argparse
+import logging
 import operator
 from functools import reduce
 from itertools import combinations, permutations
-from pprint import pprint
-from typing import Callable, TypeIs
+from typing import Any, Callable, TypeIs
 
 type Number = int | float
 type BinaryOp = Callable[[Number, Number], Number]
-
-cypher: list[str] = [
-    "pigs",
-    "sand",
-    "mail",
-    "date",
-    "head",
-    "clam",
-    "peak",
-    "sand",
-    "joya",
-    "well",
-    "toad",
-    "card",
-    "will",
-    "tape",
-    "legs",
-    "tree",
-    "road",
-    "maid",
-    "slab",
-    "rock",
-    "hand",
-    "vase",
-    "safe",
-    "clay",
-    "toes",
-]
 
 
 def is_valid_numeric_core(number: Number) -> TypeIs[int]:
     try:
         val = float(number)
-        return val > 0 and val % 1 == 0 and len(str(int(val))) <= 3
+        return val > 0 and val % 1 == 0 and val < 100
     except (ValueError, TypeError):
         return False
 
@@ -49,7 +22,7 @@ def is_valid_numeric_core(number: Number) -> TypeIs[int]:
 def is_processable(number: Number) -> TypeIs[int]:
     try:
         val = float(number)
-        return val > 0 and val % 1 == 0 and len(str(int(val))) > 3
+        return val > 0 and val % 1 == 0 and val >= 100
     except (ValueError, TypeError):
         return False
 
@@ -88,10 +61,9 @@ def split_number_into_groups(number: int) -> list[list[int]]:
     ]
 
     ## Testing
-    # print(f"Split spots: {all_split_spots}")
+    logging.debug(f"Split spots: {number} -> {all_split_spots}")
 
     resulting_groups: list[list[int]] = []
-
     # 12345
     # split_spots    = [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
     # grouped_digits = [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
@@ -103,7 +75,9 @@ def split_number_into_groups(number: int) -> list[list[int]]:
             working_digits.insert((split_spot + 1), "-")
 
         grouped_digits: list[int] = [int(d) for d in "".join(working_digits).split("-")]
-        resulting_groups.append(grouped_digits)
+
+        if not any([number >= 100 for number in grouped_digits]):
+            resulting_groups.append(grouped_digits)
 
     return resulting_groups
 
@@ -137,7 +111,7 @@ def numeric_core_iteration(digit_group: list[int]) -> int | None:
     return min(op_combo_cores) if len(op_combo_cores) > 0 else None
 
 
-# given a number
+# given a numberlogging.basicConfig(level=logging.INFO)
 # find all possible ways to split into 4 groups
 # for every group,
 #   run every operation order for every group
@@ -155,63 +129,98 @@ def numeric_core(number: Number) -> int | None:
 
     digit_groups: list[list[int]] = split_number_into_groups(number)
     ## Testing
-    # print(f"Digit groups: {digit_groups}")
+    logging.debug(f"Digit groups: {number} -> {digit_groups}")
 
-    current_cores: list[int] = [
-        digit_group_core
+    ## tuple just to help debug, previously was just the list of core int values
+    current_cores: list[tuple[list[int], int]] = [
+        (digit_group, digit_group_core)
         for digit_group in digit_groups
         if (digit_group_core := numeric_core_iteration(digit_group)) is not None
     ]
     ## Testing
-    # print(f"Cores per digit groups: {current_cores}")
+    logging.debug(f"Cores per digit groups: {number} -> {current_cores}")
 
-    result_core = int(min(current_cores)) if len(current_cores) > 0 else None
+    result_core: int | None = (
+        int(min([group_core_tuple[1] for group_core_tuple in current_cores]))
+        if len(current_cores) > 0
+        else None
+    )
 
     ## Testing
-    # print("")
-    # print(f"{int(number)} : {result_core}")
+    logging.debug(f"Final numeric core: {number} ->  {result_core}")
     return result_core
 
 
-def print_cypher(data: list[int]) -> None:
-    for i in range(0, len(data), 5):
-        print(data[i : i + 5])
-
-
-def test():
-    ## 12345
-    ## Split spots: [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
-    ## Digit groups: [[1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5]]
-    ## Cores per digit groups: [12.0, 4.0]
-    ## 4.0
-    print("Testing:")
-    curr_core = numeric_core(12345)
-    print(curr_core)
+def cypher_to_string(data: list[Any]) -> str:  # pyright: ignore[reportExplicitAny]
+    return "".join([f"{data[i : i + 5]}\n" for i in range(0, len(data), 5)])
 
 
 def main() -> None:
-    print("Initial cypher:")
-    print_cypher(data=cypher)
-    print("")
+    parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    _ = parser.add_argument(
+        "--debug", action="store_true", type=bool, help="Enable debug logging"
+    )
+    args: argparse.Namespace = parser.parse_args()
 
-    print("Cypher after character to numbers:")
+    logging.basicConfig(
+        level=logging.DEBUG if args.debug else logging.INFO,  # pyright: ignore[reportAny]
+        style="{",
+        format="[{asctime}] {levelname:8} [{funcName} @ line {lineno}]\n{message}\n",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    cypher: list[str] = (
+        [
+            "pigs",
+            "sand",
+            "mail",
+            "date",
+            "head",
+            "clam",
+            "peak",
+            "sand",
+            "joya",
+            "well",
+            "toad",
+            "card",
+            "will",
+            "tape",
+            "legs",
+            "tree",
+            "road",
+            "maid",
+            "slab",
+            "rock",
+            "hand",
+            "vase",
+            "safe",
+            "clay",
+            "toes",
+        ]
+        if not args.debug  # pyright: ignore[reportAny]
+        else ["pigs"]
+    )
+
+    ## Initial print
+    logging.info(f"Initial cypher: {cypher_to_string(data=cypher)}")
+
+    ## Convert to large numbers
     cypher_as_large_nums: list[int] = cypher_to_nums(cypher=cypher)
-    print_cypher(data=cypher_as_large_nums)
-    print("")
+    logging.info(f"Cypher as large numbers: {cypher_to_string(cypher_as_large_nums)}")
 
-    print("Cypher as numeric cores:")
+    ## Get numberic cores per large number
     cypher_as_cores: list[int] = [
-        numeric_core(number) for number in cypher_as_large_nums
+        resulting_core
+        for number in cypher_as_large_nums
+        if (resulting_core := numeric_core(number) is not None)
     ]
-    print_cypher(cypher_as_cores)
-    print("")
+    logging.info(f"Cypher as numeric cores: {cypher_to_string(cypher_as_cores)}")
 
-    print("Cypher as characters:")
+    ## Get character for each numeric core
     cypher_as_characters: list[str] = [
         nums_to_character(number) for number in cypher_as_cores
     ]
-    print_cypher(cypher_as_characters)
-    print("")
+    logging.info(f"Cypher as characters: {cypher_to_string(cypher_as_characters)}")
 
 
 if __name__ == "__main__":
