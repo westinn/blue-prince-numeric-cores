@@ -5,165 +5,210 @@ import logging
 import operator
 from functools import reduce
 from itertools import combinations, permutations
-from typing import Any, Callable, TypeIs
+from typing import Any, Callable, Self, TypeIs
 
 type Number = int | float
 type BinaryOp = Callable[[Number, Number], Number]
 
 
-def is_valid_numeric_core(number: Number) -> TypeIs[int]:
-    try:
-        val = float(number)
-        return val > 0 and val % 1 == 0 and val < 100
-    except (ValueError, TypeError):
-        return False
+class NumericCoreCalculator:
+    def __init__(self: Self, cypher: list[str]) -> None:
+        self.cypher: list[str] = cypher
 
+    def set_cypher(self, cypher: list[str]) -> None:
+        self.cypher = cypher
 
-def is_processable(number: Number) -> TypeIs[int]:
-    try:
-        val = float(number)
-        return val > 0 and val % 1 == 0 and val >= 100
-    except (ValueError, TypeError):
-        return False
+    @staticmethod
+    def cypher_to_string(data: list[Any]) -> str:  # pyright: ignore[reportExplicitAny]
+        return "".join([f"{data[i : i + 5]}\n" for i in range(0, len(data), 5)])
 
+    @staticmethod
+    def is_valid_numeric_core(number: Number) -> TypeIs[int]:
+        try:
+            val = float(number)
+            return val > 0 and val % 1 == 0 and val < 1000
+        except (ValueError, TypeError):
+            return False
 
-def word_to_nums(word: str) -> int:
-    return int(
-        "".join([str(ord(letter) - ord("A") + 1) for letter in word.strip().upper()])
-    )
+    @staticmethod
+    def is_processable(number: Number) -> TypeIs[int]:
+        try:
+            val = float(number)
+            return val > 0 and val % 1 == 0 and val >= 1000
+        except (ValueError, TypeError):
+            return False
 
+    @staticmethod
+    def word_to_digit_groups(word: str) -> list[int]:
+        return [(ord(letter) - ord("A") + 1) for letter in word.strip().upper()]
 
-def nums_to_character(number: int) -> str:
-    return chr(number + 64)
+    @staticmethod
+    def cypher_to_nums(cypher: list[str]) -> list[list[int]]:
+        return [
+            NumericCoreCalculator.word_to_digit_groups(word) for word in cypher
+        ]
 
+    @staticmethod
+    def nums_to_character(number: int) -> str:
+        return chr(int(number) + 64)
 
-def cypher_to_nums(cypher: list[str]) -> list[int]:
-    return [word_to_nums(word) for word in cypher]
+    @staticmethod
+    def split_number_into_groups(number: int) -> list[list[int]]:
+        ## 12345
+        ## [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
+        ## [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
+        ## technically we can pass a float here and it "passes" the type check,
+        ## but we actually need no decimals for length, even if 10.0 passes
+        digits: list[str] = [d for d in str(int(number))]
 
-
-## 12345
-## [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
-## [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
-def split_number_into_groups(number: int) -> list[list[int]]:
-    ## technically we can pass a float here and it passes,
-    ## but we actually need no decimals for length, even if 10.0 passes
-    int_number = int(number)
-    digits: list[str] = [d for d in str(int_number)]
-
-    ## in terms of possible spots to split a number, there are "len(number) - 1" possible locationss
-    ## in terms of how many splits we need to pick, there is "groups_needed - 1" amount, so 3 for us
-    groups_needed = 4
-    all_split_spots: list[list[int]] = [
-        list(split_spots)
-        for split_spots in combinations(
-            range(len(str(int_number)) - 1), groups_needed - 1
-        )
-    ]
-
-    ## Testing
-    logging.debug(f"Split spots: {number} -> {all_split_spots}")
-
-    resulting_groups: list[list[int]] = []
-    # 12345
-    # split_spots    = [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
-    # grouped_digits = [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
-    for split_spots in all_split_spots:
-        working_digits = digits.copy()
-
-        ## insert split character in reverse order so not mess up subsequent inserts
-        for split_spot in reversed(split_spots):
-            working_digits.insert((split_spot + 1), "-")
-
-        ## this is dumb but works and is readable
-        grouped_digits: list[int] = [int(d) for d in "".join(working_digits).split("-")]
-
-        resulting_groups.append(grouped_digits)
-
-        ## TODO: do we need to check if the grouping of numbers has a length limit?
-        ##       e.g. can we group "1234" as [1 234] ?
-        # if not any([number >= 100 for number in grouped_digits]):
-        #     resulting_groups.append(grouped_digits)
-
-    return resulting_groups
-
-
-def numeric_core_iteration(digit_group: list[int]) -> int | None:
-    ops: list[BinaryOp] = [operator.add, operator.sub, operator.mul, operator.truediv]
-
-    ## every combo without add, with add at the beginning
-    op_combos: list[list[BinaryOp]] = [
-        op_combo
-        for no_add_op_combo in permutations(ops[1:])
-        if (operator.truediv, 0)
-        not in zip(op_combo := ops[:1] + list(no_add_op_combo), digit_group)
-    ]
-
-    def apply_ops(result: Number, zipped_op_digit: tuple[BinaryOp, Number]) -> Number:
-        return zipped_op_digit[0](result, zipped_op_digit[1])
-
-    ## for every combination of operation, get the resulting core with reduce
-    op_combo_cores: list[int] = [
-        potential_core
-        for op_combo in op_combos
-        if (
-            potential_core := numeric_core(
-                reduce(apply_ops, zip(op_combo, digit_group), 0)
+        ## in terms of possible spots to split a number, there are "len(number) - 1" possible locationss
+        ## in terms of how many splits we need to pick, there is "groups_needed - 1" amount, so 3 for us
+        groups_needed = 4
+        all_split_spots: list[list[int]] = [
+            list[int](split_spots)
+            for split_spots in combinations(
+                range(len(str(int(number))) - 1), groups_needed - 1
             )
+        ]
+
+        logging.debug(f"Split spots: {number} -> {all_split_spots}")
+
+        resulting_groups: list[list[int]] = []
+        for split_spots in all_split_spots:
+            working_digits = digits.copy()
+
+            ## insert split character in reverse order so not mess up subsequent inserts
+            for split_spot in reversed(split_spots):
+                working_digits.insert((split_spot + 1), "-")
+
+            ## this is dumb but works and is readable
+            grouped_digits: list[int] = [
+                int(d) for d in "".join(working_digits).split("-")
+            ]
+            resulting_groups.append(grouped_digits)
+        return resulting_groups
+
+    @staticmethod
+    def numeric_core_iteration(digit_group: list[int]) -> int | None:
+        ops: list[BinaryOp] = [
+            operator.add,
+            operator.sub,
+            operator.mul,
+            operator.truediv,
+        ]
+
+        ## every combo without add, with add at the beginning
+        op_combos: list[list[BinaryOp]] = [
+            op_combo
+            for no_add_op_combo in permutations(ops[1:])
+            if (operator.truediv, 0)
+            not in zip(op_combo := ops[:1] + list(no_add_op_combo), digit_group)
+        ]
+
+        def apply_ops(
+            result: Number, zip_op_digit: tuple[BinaryOp, Number]
+        ) -> Number:
+            return zip_op_digit[0](result, zip_op_digit[1])
+
+        ## for every combination of operation, get the resulting core with reduce
+        op_combo_cores: list[int] = [
+            potential_core
+            for op_combo in op_combos
+            if (
+                potential_core := NumericCoreCalculator.numeric_core(
+                    number=reduce(
+                        apply_ops, zip(op_combo, digit_group), initial=0
+                    )
+                )
+            )
+            is not None
+        ]
+        return min(op_combo_cores) if len(op_combo_cores) > 0 else None
+
+    @staticmethod
+    def numeric_core(number: Number) -> int | None:
+        if NumericCoreCalculator.is_valid_numeric_core(number):
+            return number
+        if not NumericCoreCalculator.is_processable(number):
+            return None
+
+        ## not a core yet but still processable
+        digit_groups: list[list[int]] = (
+            NumericCoreCalculator.split_number_into_groups(number)
         )
-        is not None
-    ]
+        logging.debug(f"Digit groups: {number} -> {digit_groups}")
 
-    return min(op_combo_cores) if len(op_combo_cores) > 0 else None
+        ## tuple just to help debug, previously was just the list of core int values
+        current_cores: list[tuple[list[int], int]] = [
+            (digit_group, digit_group_core)
+            for digit_group in digit_groups
+            if (
+                digit_group_core
+                := NumericCoreCalculator.numeric_core_iteration(digit_group)
+            )
+            is not None
+        ]
+        logging.debug(f"Cores per digit groups: {number} -> {current_cores}")
 
+        result_core: int | None = (
+            int(min([tuple_dg_dgcore[1] for tuple_dg_dgcore in current_cores]))
+            if len(current_cores) > 0
+            else None
+        )
 
-# given a numberlogging.basicConfig(level=logging.INFO)
-# find all possible ways to split into 4 groups
-# for every group,
-#   run every operation order for every group
-#   every time an operation per group finishes, check if it is a valid core number
-#   if it is not a valid core number, check if it is processable
-#   if processable, num recursion
-#   else no core number
-# once you have the core number from each group, return the smallest
-def numeric_core(number: Number) -> int | None:
-    if is_valid_numeric_core(number):
-        return number
-    if not is_processable(number):
-        return None
-    ## not a core yet but still processable
+        logging.debug(f"Final numeric core: {number} ->  {result_core}")
+        return result_core
 
-    digit_groups: list[list[int]] = split_number_into_groups(number)
-    ## Testing
-    logging.debug(f"Digit groups: {number} -> {digit_groups}")
+    def solve_cypher(self) -> None:
+        ## Initial print
+        logging.info(
+            msg=f"Initial cypher: \n{self.cypher_to_string(data=self.cypher)}"
+        )
 
-    ## tuple just to help debug, previously was just the list of core int values
-    current_cores: list[tuple[list[int], int]] = [
-        (digit_group, digit_group_core)
-        for digit_group in digit_groups
-        if (digit_group_core := numeric_core_iteration(digit_group)) is not None
-    ]
-    ## Testing
-    logging.debug(f"Cores per digit groups: {number} -> {current_cores}")
+        ## Convert initial cypher into digit groups per given letters
+        cypher_as_digit_groups: list[list[int]] = [
+            self.word_to_digit_groups(word) for word in self.cypher
+        ]
+        logging.info(
+            msg=f"Cypher as digit groups: \n{self.cypher_to_string(data=cypher_as_digit_groups)}"
+        )
 
-    result_core: int | None = (
-        int(min([group_core_tuple[1] for group_core_tuple in current_cores]))
-        if len(current_cores) > 0
-        else None
-    )
+        ## Get numeric cores per digit group
+        ## will recurse into larger numeric_core function that handles further splitting
+        cypher_as_cores: list[int] = []
+        for digit_group in cypher_as_digit_groups:
+            resulting_core = self.numeric_core_iteration(
+                digit_group=digit_group
+            )
+            if resulting_core is not None:
+                cypher_as_cores.append(resulting_core)
+        # cypher_as_cores: list[int] = [
+        #     resulting_core
+        #     for digit_group in cypher_as_digit_groups
+        #     if (
+        #         resulting_core := self.numeric_core_iteration(
+        #             digit_group=digit_group
+        #         )
+        #         is not None
+        #     )
+        # ]
+        logging.info(
+            msg=f"Cypher as numeric cores: \n{self.cypher_to_string(cypher_as_cores)}"
+        )
 
-    ## Testing
-    logging.debug(f"Final numeric core: {number} ->  {result_core}")
-    return result_core
-
-
-def cypher_to_string(data: list[Any]) -> str:  # pyright: ignore[reportExplicitAny]
-    return "".join([f"{data[i : i + 5]}\n" for i in range(0, len(data), 5)])
+        ## Get character for each numeric core
+        cypher_as_characters: list[str] = [
+            self.nums_to_character(number) for number in cypher_as_cores
+        ]
+        logging.info(
+            msg=f"Cypher as characters: \n{self.cypher_to_string(cypher_as_characters)}"
+        )
 
 
 def main() -> None:
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     _ = parser.add_argument(
-        "--debug", action="store_true", type=bool, help="Enable debug logging"
+        "--debug", action="store_true", help="Enable debug logging"
     )
     args: argparse.Namespace = parser.parse_args()
 
@@ -203,29 +248,11 @@ def main() -> None:
             "toes",
         ]
         if not args.debug  # pyright: ignore[reportAny]
-        else ["pigs"]
+        else ["pigs", "sand"]
     )
 
-    ## Initial print
-    logging.info(f"Initial cypher: {cypher_to_string(data=cypher)}")
-
-    ## Convert to large numbers
-    cypher_as_large_nums: list[int] = cypher_to_nums(cypher=cypher)
-    logging.info(f"Cypher as large numbers: {cypher_to_string(cypher_as_large_nums)}")
-
-    ## Get numberic cores per large number
-    cypher_as_cores: list[int] = [
-        resulting_core
-        for number in cypher_as_large_nums
-        if (resulting_core := numeric_core(number) is not None)
-    ]
-    logging.info(f"Cypher as numeric cores: {cypher_to_string(cypher_as_cores)}")
-
-    ## Get character for each numeric core
-    cypher_as_characters: list[str] = [
-        nums_to_character(number) for number in cypher_as_cores
-    ]
-    logging.info(f"Cypher as characters: {cypher_to_string(cypher_as_characters)}")
+    cypher_calc: NumericCoreCalculator = NumericCoreCalculator(cypher=cypher)
+    cypher_calc.solve_cypher()
 
 
 if __name__ == "__main__":
