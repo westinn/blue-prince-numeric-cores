@@ -60,6 +60,10 @@ def word_to_nums(word: str) -> int:
     )
 
 
+def nums_to_character(number: int) -> str:
+    return chr(number + 64)
+
+
 def cypher_to_nums(cypher: list[str]) -> list[int]:
     return [word_to_nums(word) for word in cypher]
 
@@ -82,7 +86,9 @@ def split_number_into_groups(number: int) -> list[list[int]]:
             range(len(str(int_number)) - 1), groups_needed - 1
         )
     ]
-    print(all_split_spots)
+
+    ## Testing
+    # print(f"Split spots: {all_split_spots}")
 
     resulting_groups: list[list[int]] = []
 
@@ -91,17 +97,6 @@ def split_number_into_groups(number: int) -> list[list[int]]:
     # grouped_digits = [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
     for split_spots in all_split_spots:
         working_digits = digits.copy()
-        # indexes        = [01234]
-        # digits         = [12345]
-        # split_spots    = [0, 2, 3]
-        # grouped_digits = [1, 23, 4, 5]
-        ## so we want to split after 0, so at indexes: [0:1], [1:3], [3:4], [4:]
-        #
-        # better_grouped_digits = [
-        #     digits[curr_split_spot : split_spots[ind + 1]]
-        #     for ind, curr_split_spot in enumerate(split_spots)
-        # ]
-        # print(better_grouped_digits)
 
         ## insert split character in reverse order so not mess up subsequent inserts
         for split_spot in reversed(split_spots):
@@ -113,14 +108,6 @@ def split_number_into_groups(number: int) -> list[list[int]]:
     return resulting_groups
 
 
-## for every group,
-##   # <<< this is iteration func >>>
-##   run every operation order for every group
-##      every time an operation per group finishes,
-#    check if it is a valid core number
-##   if it is not a valid core number, check if it is processable
-##   if processable, num recursion
-##   else no core number
 def numeric_core_iteration(digit_group: list[int]) -> int | None:
     ops: list[BinaryOp] = [operator.add, operator.sub, operator.mul, operator.truediv]
 
@@ -164,34 +151,39 @@ def numeric_core(number: Number) -> int | None:
         return number
     if not is_processable(number):
         return None
-
     ## not a core yet but still processable
-    print("")
-    print(number)
 
-    ## 201514
-    ## [[8, 6, 4, 55], [8, 6, 45, 5], [8, 64, 5, 5], [86, 4, 5, 5]]
     digit_groups: list[list[int]] = split_number_into_groups(number)
-    print(digit_groups)
+    ## Testing
+    # print(f"Digit groups: {digit_groups}")
 
     current_cores: list[int] = [
         digit_group_core
         for digit_group in digit_groups
         if (digit_group_core := numeric_core_iteration(digit_group)) is not None
     ]
-    return min(current_cores) if len(current_cores) > 0 else None
+    ## Testing
+    # print(f"Cores per digit groups: {current_cores}")
+
+    result_core = int(min(current_cores)) if len(current_cores) > 0 else None
+
+    ## Testing
+    # print("")
+    # print(f"{int(number)} : {result_core}")
+    return result_core
 
 
-def print_cypher(data) -> None:
+def print_cypher(data: list[int]) -> None:
     for i in range(0, len(data), 5):
         print(data[i : i + 5])
 
 
 def test():
-    # 12345
-    # [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
-    # [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
-    # 4.0
+    ## 12345
+    ## Split spots: [[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]]
+    ## Digit groups: [[1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5]]
+    ## Cores per digit groups: [12.0, 4.0]
+    ## 4.0
     print("Testing:")
     curr_core = numeric_core(12345)
     print(curr_core)
@@ -202,15 +194,24 @@ def main() -> None:
     print_cypher(data=cypher)
     print("")
 
-    cypher_as_nums: list[int] = cypher_to_nums(cypher=cypher)
     print("Cypher after character to numbers:")
-    print_cypher(data=cypher_as_nums)
+    cypher_as_large_nums: list[int] = cypher_to_nums(cypher=cypher)
+    print_cypher(data=cypher_as_large_nums)
     print("")
 
-    # cypher_as_cores: list[int | None] = [numeric_core(number) for number in cypher_as_nums]
-    # pprint(cypher_as_cores)
+    print("Cypher as numeric cores:")
+    cypher_as_cores: list[int] = [
+        numeric_core(number) for number in cypher_as_large_nums
+    ]
+    print_cypher(cypher_as_cores)
+    print("")
 
-    test()
+    print("Cypher as characters:")
+    cypher_as_characters: list[str] = [
+        nums_to_character(number) for number in cypher_as_cores
+    ]
+    print_cypher(cypher_as_characters)
+    print("")
 
 
 if __name__ == "__main__":
