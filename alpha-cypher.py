@@ -3,6 +3,7 @@
 import argparse
 import logging
 import operator
+from argparse import Namespace
 from functools import reduce
 from itertools import combinations, permutations
 from typing import Any, Callable, Self, TypeIs
@@ -216,12 +217,15 @@ class NumericCoreCalculator:
 
 
 def main() -> None:
-    parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    _ = parser.add_argument(
-        "--debug", action="store_true", help="Enable debug logging"
-    )
-    args: argparse.Namespace = parser.parse_args()
+    def setup_args() -> Namespace:
+        parser: argparse.ArgumentParser = argparse.ArgumentParser()
+        _ = parser.add_argument(
+            "--debug", action="store_true", help="Enable debug logging"
+        )
+        args: argparse.Namespace = parser.parse_args()
+        return args
 
+    args: Namespace = setup_args()
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO,  # pyright: ignore[reportAny]
         style="{",
