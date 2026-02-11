@@ -175,23 +175,24 @@ class NumericCoreCalculator:
 
         ## Get numeric cores per digit group
         ## will recurse into larger numeric_core function that handles further splitting
-        cypher_as_cores: list[int] = []
-        for digit_group in cypher_as_digit_groups:
-            resulting_core = self.numeric_core_iteration(
-                digit_group=digit_group
-            )
-            if resulting_core is not None:
-                cypher_as_cores.append(resulting_core)
-        # cypher_as_cores: list[int] = [
-        #     resulting_core
-        #     for digit_group in cypher_as_digit_groups
-        #     if (
-        #         resulting_core := self.numeric_core_iteration(
-        #             digit_group=digit_group
-        #         )
-        #         is not None
+        # cypher_as_cores2: list[int] = []
+        # for digit_group in cypher_as_digit_groups:
+        #     resulting_core = self.numeric_core_iteration(
+        #         digit_group=digit_group
         #     )
-        # ]
+        #     if resulting_core is not None:
+        #         cypher_as_cores.append(resulting_core)
+
+        cypher_as_cores: list[int] = [
+            resulting_core
+            for digit_group in cypher_as_digit_groups
+            if (
+                resulting_core := self.numeric_core_iteration(
+                    digit_group=digit_group
+                )
+            )
+            is not None
+        ]
         logging.info(
             msg=f"Cypher as numeric cores: \n{self.cypher_to_string(cypher_as_cores)}"
         )
@@ -203,6 +204,15 @@ class NumericCoreCalculator:
         logging.info(
             msg=f"Cypher as characters: \n{self.cypher_to_string(cypher_as_characters)}"
         )
+
+        ## Cypher as final strings
+        cypher_result: str = "".join(
+            [
+                f"{''.join(cypher_as_characters[i : i + 5])}\n"
+                for i in range(0, len(cypher_as_characters), 5)
+            ]
+        )
+        logging.info(msg=f"Cypher result: \n\n{cypher_result}")
 
 
 def main() -> None:
