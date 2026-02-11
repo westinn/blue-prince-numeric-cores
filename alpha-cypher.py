@@ -64,8 +64,9 @@ def cypher_to_nums(cypher: list[str]) -> list[int]:
     return [word_to_nums(word) for word in cypher]
 
 
-## 86455
-## [[8, 6, 4, 55], [8, 6, 45, 5], [8, 64, 5, 5], [86, 4, 5, 5]]
+## 12345
+## [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
+## [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
 def split_number_into_groups(number: int) -> list[list[int]]:
     ## technically we can pass a float here and it passes,
     ## but we actually need no decimals for length, even if 10.0 passes
@@ -81,23 +82,32 @@ def split_number_into_groups(number: int) -> list[list[int]]:
             range(len(str(int_number)) - 1), groups_needed - 1
         )
     ]
+    print(all_split_spots)
 
     resulting_groups: list[list[int]] = []
+
+    # 12345
+    # split_spots    = [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
+    # grouped_digits = [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
     for split_spots in all_split_spots:
-        # digits      = [1, 2, 3, 4, 5, 6]
-        # split_spots = [0,    2,    4]
-        # range      -> [0, 1¡]
+        working_digits = digits.copy()
+        # indexes        = [01234]
+        # digits         = [12345]
+        # split_spots    = [0, 2, 3]
+        # grouped_digits = [1, 23, 4, 5]
+        ## so we want to split after 0, so at indexes: [0:1], [1:3], [3:4], [4:]
         #
-        test = [
-            digits[split_spots[ind] : split_spots[ind + 1]]
-            for ind in range(len(split_spots) - 1)
-        ]
+        # better_grouped_digits = [
+        #     digits[curr_split_spot : split_spots[ind + 1]]
+        #     for ind, curr_split_spot in enumerate(split_spots)
+        # ]
+        # print(better_grouped_digits)
 
         ## insert split character in reverse order so not mess up subsequent inserts
         for split_spot in reversed(split_spots):
-            digits.insert((split_spot + 1), "-")
+            working_digits.insert((split_spot + 1), "-")
 
-        grouped_digits: list[int] = [int(d) for d in "".join(digits).split("-")]
+        grouped_digits: list[int] = [int(d) for d in "".join(working_digits).split("-")]
         resulting_groups.append(grouped_digits)
 
     return resulting_groups
@@ -159,10 +169,10 @@ def numeric_core(number: Number) -> int | None:
     print("")
     print(number)
 
-    ## 86455
+    ## 201514
     ## [[8, 6, 4, 55], [8, 6, 45, 5], [8, 64, 5, 5], [86, 4, 5, 5]]
     digit_groups: list[list[int]] = split_number_into_groups(number)
-    # print(digit_groups)
+    print(digit_groups)
 
     current_cores: list[int] = [
         digit_group_core
@@ -178,8 +188,12 @@ def print_cypher(data) -> None:
 
 
 def test():
+    # 12345
+    # [ [0, 1, 2],     [0, 1, 3],     [0, 2, 3],     [1, 2, 3] ]
+    # [ [1, 2, 3, 45], [1, 2, 34, 5], [1, 23, 4, 5], [12, 3, 4, 5] ]
+    # 4.0
     print("Testing:")
-    curr_core = numeric_core(201514)
+    curr_core = numeric_core(12345)
     print(curr_core)
 
 
