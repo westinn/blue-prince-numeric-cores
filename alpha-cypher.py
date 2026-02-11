@@ -74,10 +74,15 @@ def split_number_into_groups(number: int) -> list[list[int]]:
         for split_spot in reversed(split_spots):
             working_digits.insert((split_spot + 1), "-")
 
+        ## this is dumb but works and is readable
         grouped_digits: list[int] = [int(d) for d in "".join(working_digits).split("-")]
 
-        if not any([number >= 100 for number in grouped_digits]):
-            resulting_groups.append(grouped_digits)
+        resulting_groups.append(grouped_digits)
+
+        ## TODO: do we need to check if the grouping of numbers has a length limit?
+        ##       e.g. can we group "1234" as [1 234] ?
+        # if not any([number >= 100 for number in grouped_digits]):
+        #     resulting_groups.append(grouped_digits)
 
     return resulting_groups
 
