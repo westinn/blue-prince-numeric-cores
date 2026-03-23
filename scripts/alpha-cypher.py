@@ -34,7 +34,7 @@ class NumericCoreCalculator:
     @staticmethod
     def is_processable(number: Number) -> TypeIs[int]:
         try:
-            val = float(number)
+            val: float = float(number)
             return val > 0 and val % 1 == 0 and val >= 1000
         except (ValueError, TypeError):
             return False
