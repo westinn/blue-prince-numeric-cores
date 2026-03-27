@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "numeric_core_solver"
+name = "numeric_cores"
 version = "0.1.0"
 dependencies = [
  "num-traits",

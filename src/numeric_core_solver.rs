@@ -1,69 +1,8 @@
-use num_traits::{FromPrimitive, Num, ToPrimitive};
-use std::{
-    fmt::{Debug, Display},
-    fs, u32,
-};
+use std::{fmt::Debug, fs, u32};
 
-// These are the states that we can be in while processing a Number that could be a NumericCore
-// a valid NumericCore result: a whole number with 3 or less digits, >0 and <1000
-// a Processable value: a whole number with 4 or more digits, aka >1000
-// an Invalid result: a non-whole number, or a negative number
+use numeric_core_state::NumericCoreState;
 
-#[derive(Debug)]
-enum NumericCoreState {
-    NumericCore(NumericCoreValue),
-    Processable(ProcessableValue),
-    Invalid,
-}
-
-impl NumericCoreState {
-    fn new<T>(input_value: T) -> Result<Self, String>
-    where
-        T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
-    {
-        // @TODO: Converted these to Result/Err, since returning None would be a faulty state
-        let float_value = input_value.to_f64().ok_or_else(|| {
-            format!("Unable to convert input to f64 value for NumericCoreState creation: {input_value} !=> f64")
-        })?;
-        let int_value = input_value.to_u32().ok_or_else(|| {
-            format!("Unable to convert input to u32 value for NumericCoreState creation: {input_value} !=> u32")
-        })?;
-
-        // if non-whole number or negative, it is not valid
-        if float_value.fract() != 0.0 || int_value <= 0 {
-            return Ok(NumericCoreState::Invalid);
-        }
-
-        // bounds checking for final integer value
-        match int_value {
-            1..1000 => Ok(NumericCoreState::NumericCore(NumericCoreValue(int_value))),
-            1000.. => Ok(NumericCoreState::Processable(ProcessableValue(int_value))),
-            _ => Ok(NumericCoreState::Invalid),
-        }
-    }
-}
-
-// trait ValidState {
-//     fn get_numeric_core(self) -> Option<NumericCoreState>;
-// }
-
-#[derive(Debug)]
-struct NumericCoreValue(u32);
-
-// impl ValidState for NumericCoreValue {
-//     fn get_numeric_core(self) -> Option<NumericCoreState> {
-//         self
-//     }
-// }
-
-#[derive(Debug)]
-struct ProcessableValue(u32);
-
-// impl ProcessableValue {
-//     fn get_numeric_core(self) -> Option<NumericCoreState> {
-//         todo!()
-//     }
-// }
+mod numeric_core_state;
 
 /*
 take cypher as matrix of strings
@@ -81,15 +20,15 @@ for each NumericCoreIteration,
 */
 
 #[derive(Debug)]
-pub struct NumericCoreSolver {
-    intial_cypher_matrix: Vec<Vec<String>>,
+struct NumericCoreSolver {
+    string_cypher_matrix: Vec<Vec<String>>,
     numeric_cypher_matrix: Vec<Vec<NumericCoreState>>,
 }
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, String> {
         let file_contents: String = fs::read_to_string(cypher_file_path)
-            .expect(format!("Unable to read file: {}", cypher_file_path).as_str());
+            .expect(&format!("Unable to read file: {}", cypher_file_path));
 
         if file_contents.is_empty() {
             return Err(format!("Input file was empty: {cypher_file_path}"));
@@ -106,7 +45,7 @@ impl NumericCoreSolver {
             ));
         }
 
-        let cypher_from_input: Vec<Vec<String>> = file_contents
+        let cypher_from_string_file: Vec<Vec<String>> = file_contents
             .trim()
             .lines()
             .map(|line: &str| {
@@ -116,10 +55,10 @@ impl NumericCoreSolver {
             })
             .collect();
 
-        let numeric_cypher_matrix = Self::convert_to_numeric_cypher(&cypher_from_input);
+        let numeric_cypher_matrix = Self::convert_to_numeric_cypher(&cypher_from_string_file);
 
         Ok(NumericCoreSolver {
-            intial_cypher_matrix: cypher_from_input,
+            string_cypher_matrix: cypher_from_string_file,
             numeric_cypher_matrix: numeric_cypher_matrix,
         })
     }
@@ -172,10 +111,35 @@ impl NumericCoreSolver {
     }
 
     pub fn get_initial_cypher(&self) -> &[Vec<String>] {
-        &self.intial_cypher_matrix
+        &self.string_cypher_matrix
     }
 
     pub fn get_numeric_cypher(&self) -> &[Vec<NumericCoreState>] {
         &self.numeric_cypher_matrix
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // functions
+    /*
+    NumericCoreState::new
+    NumericCoreValue
+    ProcessableValues
+
+    NumericCoreSolver::new(file_path)
+    ::convert_to_numeric_cypher
+    ::convert_word_to_number
+    ::solve_cypher
+    ::get_initial_cypher
+    ::get_numeric_cypher
+     */
+
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
     }
 }
