@@ -7,7 +7,7 @@ pub mod states {
     // a Processable value: a whole number with 4 or more digits, aka >1000
     // an Invalid result: a non-whole number, or a negative number
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct NumericCoreValue(u32);
 
     impl NumericCoreValue {
@@ -16,16 +16,20 @@ pub mod states {
         }
     }
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct ProcessableValue(u32);
 
     impl ProcessableValue {
         pub fn get(&self) -> u32 {
             self.0
         }
+
+        pub fn get_numeric_core(&self) -> NumericCoreState {
+            todo!();
+        }
     }
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum NumericCoreState {
         NumericCore(NumericCoreValue),
         Processable(ProcessableValue),
@@ -54,6 +58,18 @@ pub mod states {
                     Ok(NumericCoreState::Processable(ProcessableValue(u32_value)))
                 }
                 _ => Ok(NumericCoreState::Invalid),
+            }
+        }
+
+        pub fn get_numeric_core(&self) -> NumericCoreState {
+            match self {
+                NumericCoreState::Processable(processable_value) => {
+                    processable_value.get_numeric_core()
+                }
+                NumericCoreState::NumericCore(numeric_core_value) => {
+                    NumericCoreState::NumericCore(*numeric_core_value)
+                }
+                NumericCoreState::Invalid => NumericCoreState::Invalid,
             }
         }
     }

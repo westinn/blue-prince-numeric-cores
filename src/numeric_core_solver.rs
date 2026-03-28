@@ -19,7 +19,7 @@ for each NumericCoreIteration,
         else => return that number as the core
 */
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NumericCoreSolver {
     string_cypher_matrix: Vec<Vec<String>>,
     numeric_cypher_matrix: Vec<Vec<NumericCoreState>>,
@@ -66,7 +66,7 @@ impl NumericCoreSolver {
     fn convert_to_numeric_cypher(
         initial_string_cypher: &[Vec<String>],
     ) -> Vec<Vec<NumericCoreState>> {
-        let converted_to_numeric_cypher: Vec<Vec<NumericCoreState>> = initial_string_cypher
+        initial_string_cypher
             .iter()
             .map(|line: &Vec<String>| {
                 line.iter()
@@ -82,8 +82,7 @@ impl NumericCoreSolver {
                     })
                     .collect()
             })
-            .collect();
-        converted_to_numeric_cypher
+            .collect()
 
         // @TODO: related to above todo, in case we do want to error out of an initial bad input state
         // let any_invalid_inputs = converted_to_numeric_cypher.iter().any(|vec_of_state| {
@@ -105,9 +104,16 @@ impl NumericCoreSolver {
             .expect(&format!("Unable to parse word to number: {word}"))
     }
 
-    fn solve_cypher(&self) -> Vec<Vec<u32>> {
-        todo!();
-        let current_cypher = self;
+    fn solve_cypher(&self) -> Vec<Vec<NumericCoreState>> {
+        let current_cypher = self.get_numeric_cypher();
+
+        let numeric_cores = current_cypher
+            .iter()
+            .map(|curr_line: &Vec<NumericCoreState>| {
+                curr_line
+                    .iter()
+                    .map(|curr_item: &NumericCoreState| curr_item.get_numeric_core())
+            });
     }
 
     pub fn get_initial_cypher(&self) -> &[Vec<String>] {
