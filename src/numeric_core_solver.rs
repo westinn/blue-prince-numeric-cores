@@ -1,8 +1,8 @@
 use std::{fmt::Debug, fs, u32};
 
-use numeric_core_state::NumericCoreState;
-
 mod numeric_core_state;
+
+use numeric_core_state::states::*;
 
 /*
 take cypher as matrix of strings
@@ -20,7 +20,7 @@ for each NumericCoreIteration,
 */
 
 #[derive(Debug)]
-struct NumericCoreSolver {
+pub struct NumericCoreSolver {
     string_cypher_matrix: Vec<Vec<String>>,
     numeric_cypher_matrix: Vec<Vec<NumericCoreState>>,
 }
@@ -121,7 +121,7 @@ impl NumericCoreSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
     // functions
     /*
@@ -137,9 +137,9 @@ mod tests {
     ::get_numeric_cypher
      */
 
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
+    // #[test]
+    // fn it_works() {
+    //     let result = 2 + 2;
+    //     assert_eq!(result, 4);
+    // }
 }

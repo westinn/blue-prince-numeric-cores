@@ -1,5 +1,7 @@
 // package::module(filename)::items;
-use numeric_cores::numeric_core_solver::NumericCoreSolver;
+mod numeric_core_solver;
+
+use numeric_core_solver::NumericCoreSolver;
 
 fn main() {
     println!("Starting main!");
