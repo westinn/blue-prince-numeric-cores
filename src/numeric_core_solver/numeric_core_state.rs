@@ -1,6 +1,10 @@
 pub mod states {
+    use itertools::Itertools;
     use num_traits::{FromPrimitive, Num, ToPrimitive};
-    use std::fmt::{Debug, Display};
+    use std::{
+        fmt::{Binary, Debug, Display},
+        iter::zip,
+    };
 
     // These are the states that we can be in while processing a Number that could be a NumericCore
     // a valid NumericCore result: a whole number with 3 or less digits, >0 and <1000
@@ -24,8 +28,107 @@ pub mod states {
             self.0
         }
 
-        pub fn get_numeric_core(&self) -> NumericCoreState {
-            todo!();
+        fn process_value(self) {
+            // Initialize operations
+            use BinaryOp::*;
+
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            enum BinaryOp {
+                Add,
+                Subtract,
+                Multiply,
+                Divide,
+            }
+            const BINARY_OPS: [BinaryOp; 4] = [Add, Subtract, Multiply, Divide];
+
+            // get current value and digit groups
+            let digit_groups: Vec<[u32; 4]> = self.value_to_digit_groups();
+
+            // get binary op combos without addition
+            let op_combos: Vec<[BinaryOp; 4]> = BINARY_OPS[1..]
+                .iter()
+                .copied()
+                .permutations(3)
+                .map(|no_add_op_combo: Vec<BinaryOp>| {
+                    let mut add_op_combo: Vec<BinaryOp> = vec![BinaryOp::Add];
+                    add_op_combo.extend(no_add_op_combo);
+
+                    let add_op_combo_arr: [BinaryOp; 4] = add_op_combo
+                        .try_into()
+                        .expect("BinaryOps permutation didn't yield 3 items.");
+                    add_op_combo_arr
+                })
+                .collect();
+
+            // filter out any divide by 0s
+            // size of ( # of op_combos * # of digit_groups )
+            // a vec of instructions to calculate numeric core
+            // - given the list of digit_groups (4) and the binaryops available (4)
+            // - a paired up Vector of (operation to do on accumulator, number to apply op to)
+            // - results in a fold function of (binary_op(accumulator, number))
+            let op_digit_instr_per_digit_group: Vec<[(BinaryOp, u32); 4]> = op_combos
+                .into_iter()
+                .cartesian_product(digit_groups)
+                .filter_map(|(ops, digits)| {
+                    // checking for an instruction to divide by 0
+                    zip(ops, digits)
+                        .collect_array()
+                        .and_then(|arr: [(BinaryOp, u32); 4]| {
+                            arr.contains(&(Divide, 0)).then(|| arr)
+                        })
+                })
+                .collect();
+
+            // - results in a fold function of (binary_op(accumulator, number))
+            let numeric_values: Vec<_> = op_digit_instr_per_digit_group
+                .iter()
+                .map(|ops_for_digit_group: &[(BinaryOp, u32); 4]| {
+                    ops_for_digit_group.iter().fold(
+                        0,
+                        |acc: u32, (curr_op, curr_number): &(BinaryOp, u32)| match curr_op {
+                            Add => acc + curr_number,
+                            Subtract => acc - curr_number,
+                            Multiply => acc * curr_number,
+                            Divide => acc / curr_number,
+                        },
+                    )
+                })
+                .collect();
+
+            // for no_add_op_combo in no_add_op_combos {
+            //     let op_combo = vec![&BINARY_OPS[..1]];
+            // }
+            /*
+            op_combos: list[list[BinaryOp]] = [
+                op_combo
+                for no_add_op_combo in permutations(ops[1:])
+                if (operator.truediv, 0)
+                not in zip[tuple[BinaryOp, int]](
+                    op_combo := ops[:1] + list(no_add_op_combo), digit_group
+                )
+            ]
+            */
+        }
+
+        fn value_to_digit_groups(&self) -> Vec<[u32; 4]> {
+            // its a u32 initially so len() is ok
+            let digits_as_string: String = self.0.to_string();
+
+            // we need 4 groups to calculate numeric cores
+            // which means we split a list 3 times
+            const GROUPS_NEEDED: usize = 4;
+            const SPLIT_INDEXES_NEEDED: usize = GROUPS_NEEDED - 1;
+            (0..digits_as_string.len() - 1)
+                .array_combinations::<SPLIT_INDEXES_NEEDED>()
+                .map(|[a, b, c]| {
+                    [
+                        digits_as_string[..=a].parse::<u32>().unwrap(),
+                        digits_as_string[a + 1..=b].parse::<u32>().unwrap(),
+                        digits_as_string[b + 1..=c].parse::<u32>().unwrap(),
+                        digits_as_string[c + 1..].parse::<u32>().unwrap(),
+                    ]
+                })
+                .collect::<Vec<[u32; 4]>>()
         }
     }
 
@@ -37,7 +140,7 @@ pub mod states {
     }
 
     impl NumericCoreState {
-        pub fn new<T>(input_value: T) -> Result<Self, String>
+        pub fn new<T>(input_value: T) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {
@@ -46,30 +149,26 @@ pub mod states {
                     .to_f64()
                     .is_some_and(|value| value.fract() != 0.0)
             {
-                return Ok(NumericCoreState::Invalid);
+                return NumericCoreState::Invalid;
             }
 
             // bounds checking for final integer value
             match input_value.to_u32() {
                 Some(u32_value @ 1..1000) => {
-                    Ok(NumericCoreState::NumericCore(NumericCoreValue(u32_value)))
+                    NumericCoreState::NumericCore(NumericCoreValue(u32_value))
                 }
                 Some(u32_value @ 1000..) => {
-                    Ok(NumericCoreState::Processable(ProcessableValue(u32_value)))
+                    NumericCoreState::Processable(ProcessableValue(u32_value))
                 }
-                _ => Ok(NumericCoreState::Invalid),
+                _ => NumericCoreState::Invalid,
             }
         }
 
-        pub fn get_numeric_core(&self) -> NumericCoreState {
+        pub fn get_numeric_core(self) -> NumericCoreState {
             match self {
-                NumericCoreState::Processable(processable_value) => {
-                    processable_value.get_numeric_core()
-                }
-                NumericCoreState::NumericCore(numeric_core_value) => {
-                    NumericCoreState::NumericCore(*numeric_core_value)
-                }
-                NumericCoreState::Invalid => NumericCoreState::Invalid,
+                NumericCoreState::NumericCore(_) => self,
+                NumericCoreState::Invalid => self,
+                NumericCoreState::Processable(processable_value) => todo!(),
             }
         }
     }
