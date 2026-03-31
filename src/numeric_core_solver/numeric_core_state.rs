@@ -3,8 +3,11 @@ pub mod states {
     use num_traits::{FromPrimitive, Num, ToPrimitive};
     use std::{
         fmt::{Binary, Debug, Display},
-        iter::zip,
+        iter::zip, ops::Not
     };
+
+    mod binary_ops;
+    use binary_ops::ops::{BinaryOp, BinaryOp::{Divide}, OP_COMBOS, NUM_OF_OPS};
 
     // These are the states that we can be in while processing a Number that could be a NumericCore
     // a valid NumericCore result: a whole number with 3 or less digits, >0 and <1000
@@ -24,41 +27,16 @@ pub mod states {
     pub struct ProcessableValue(u32);
 
     impl ProcessableValue {
-        pub fn get(&self) -> u32 {
+
+        pub fn get_value(&self) -> u32 {
             self.0
         }
 
         fn process_value(self) {
-            // Initialize operations
-            use BinaryOp::*;
-
-            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-            enum BinaryOp {
-                Add,
-                Subtract,
-                Multiply,
-                Divide,
-            }
-            const BINARY_OPS: [BinaryOp; 4] = [Add, Subtract, Multiply, Divide];
-
             // get current value and digit groups
             let digit_groups: Vec<[u32; 4]> = self.value_to_digit_groups();
-
-            // get binary op combos without addition
-            let op_combos: Vec<[BinaryOp; 4]> = BINARY_OPS[1..]
-                .iter()
-                .copied()
-                .permutations(3)
-                .map(|no_add_op_combo: Vec<BinaryOp>| {
-                    let mut add_op_combo: Vec<BinaryOp> = vec![BinaryOp::Add];
-                    add_op_combo.extend(no_add_op_combo);
-
-                    let add_op_combo_arr: [BinaryOp; 4] = add_op_combo
-                        .try_into()
-                        .expect("BinaryOps permutation didn't yield 3 items.");
-                    add_op_combo_arr
-                })
-                .collect();
+            // this is cheap because it's all simple enums and arrays
+            let binary_op_combos = OP_COMBOS;
 
             // filter out any divide by 0s
             // size of ( # of op_combos * # of digit_groups )
@@ -66,21 +44,20 @@ pub mod states {
             // - given the list of digit_groups (4) and the binaryops available (4)
             // - a paired up Vector of (operation to do on accumulator, number to apply op to)
             // - results in a fold function of (binary_op(accumulator, number))
-            let op_digit_instr_per_digit_group: Vec<[(BinaryOp, u32); 4]> = op_combos
+            let op_digit_instr_per_digit_group: Vec<[(BinaryOp, u32); NUM_OF_OPS]> = binary_op_combos
                 .into_iter()
-                .cartesian_product(digit_groups)
-                .filter_map(|(ops, digits)| {
-                    // checking for an instruction to divide by 0
-                    zip(ops, digits)
-                        .collect_array()
-                        .and_then(|arr: [(BinaryOp, u32); 4]| {
-                            arr.contains(&(Divide, 0)).then(|| arr)
-                        })
+                .cartesian_product(digit_groups) //([OP; 4], [U32; 4])
+                .filter_map(|ops_digits @ (ops, digits): ([BinaryOp; NUM_OF_OPS], [u32; NUM_OF_OPS])| {
+                    let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] = zip(ops, digits).collect_array().expect("Failed to zip array of BinaryOp and Digits.");
+                    match zipped_op_digit.contains(&(Divide, 0)) {
+                        true => None,
+                        false => Some(zipped_op_digit),
+                    }
                 })
                 .collect();
 
             // - results in a fold function of (binary_op(accumulator, number))
-            let numeric_values: Vec<_> = op_digit_instr_per_digit_group
+            let numeric_values: Vec<u32> = op_digit_instr_per_digit_group
                 .iter()
                 .map(|ops_for_digit_group: &[(BinaryOp, u32); 4]| {
                     ops_for_digit_group.iter().fold(
@@ -94,6 +71,8 @@ pub mod states {
                     )
                 })
                 .collect();
+
+            while num
 
             // for no_add_op_combo in no_add_op_combos {
             //     let op_combo = vec![&BINARY_OPS[..1]];
@@ -112,7 +91,7 @@ pub mod states {
 
         fn value_to_digit_groups(&self) -> Vec<[u32; 4]> {
             // its a u32 initially so len() is ok
-            let digits_as_string: String = self.0.to_string();
+            let digits_as_string: String = self.get_value().to_string();
 
             // we need 4 groups to calculate numeric cores
             // which means we split a list 3 times
@@ -202,11 +181,11 @@ mod tests {
         let processable_value_1 = NumericCoreState::new(1000);
         let processable_value_2 = NumericCoreState::new(1500);
         assert!(
-            matches!(processable_value_1.unwrap(), NumericCoreState::Processable(v) if v.get() == 1000),
+            matches!(processable_value_1.unwrap(), NumericCoreState::Processable(v) if v.get_value() == 1000),
             "Expected Processable state with value 1000."
         );
         assert!(
-            matches!(processable_value_2.unwrap(), NumericCoreState::Processable(v) if v.get() == 1500),
+            matches!(processable_value_2.unwrap(), NumericCoreState::Processable(v) if v.get_value() == 1500),
             "Expected Processable state with value 1500."
         );
 
