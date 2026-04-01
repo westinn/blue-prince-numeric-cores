@@ -73,9 +73,9 @@ impl NumericCoreSolver {
             .split_ascii_whitespace()
             .find(|word| word.chars().any(|c: char| !c.is_ascii_alphabetic()))
         {
-            return Err(format!(
+            Err(format!(
                 "Unable to parse word from cypher as ascii string: {faulty_word_input}"
-            ));
+            ))
         } else {
             Ok(file_contents
                 .trim()
@@ -102,10 +102,10 @@ impl NumericCoreSolver {
     }
 
     fn convert_to_state_cypher(numeric_cypher: &[u32]) -> Result<Vec<NumericCoreState>, String> {
-        numeric_cypher
+        Ok(numeric_cypher
             .iter()
-            .map(|num| NumericCoreState::new(*num))
-            .collect()
+            .map(|&num| NumericCoreState::new(num))
+            .collect())
         // @TODO: Do I exit here if initial input contains something that turns into a NumericCoreState::Invalid?
         //        I would want that to only happen after processing value further in the state machine.
         //        But maybe faulty input is fine since later values are not dependant on earlier values
