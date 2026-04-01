@@ -55,6 +55,20 @@ impl NumericCoreSolver {
 
     // static setters essentially
 
+    fn convert_word_to_number(word: &str) -> Result<u32, String> {
+        // will never have a non ascii alphabetical character due to solver constructor check
+        // thus will never be out of bounds
+        let word_as_number_string: Result<u32, String> = word
+            .chars()
+            .map(|c| ((c.to_ascii_lowercase() as u32) - ('a' as u32) + 1).to_string())
+            .collect::<String>()
+            .parse::<u32>()
+            .map_err(|err| {
+                format!("Unable to convert word to number: {word}. Original error: {err}")
+            });
+        word_as_number_string
+    }
+
     fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), String> {
         let cypher_rows: usize = file_contents.trim().lines().count();
         let cypher_longest_row: usize = file_contents
@@ -101,34 +115,23 @@ impl NumericCoreSolver {
         // });
     }
 
+    // @TODO: this converts it all to value states but doesn't further process them.
     fn convert_to_state_cypher(numeric_cypher: &[u32]) -> Result<Vec<NumericCoreState>, String> {
         Ok(numeric_cypher
             .iter()
-            .map(|&num| NumericCoreState::new(num))
+            .map(|&num| {
+                ValueState::new(num)
+                    .map(Into::into)
+                    .unwrap_or_else(Into::into)
+            })
             .collect())
-        // @TODO: Do I exit here if initial input contains something that turns into a NumericCoreState::Invalid?
-        //        I would want that to only happen after processing value further in the state machine.
-        //        But maybe faulty input is fine since later values are not dependant on earlier values
-    }
-
-    fn convert_word_to_number(word: &str) -> Result<u32, String> {
-        // will never have a non ascii alphabetical character due to solver constructor check
-        // thus will never be out of bounds
-        let word_as_number_string: Result<u32, String> = word
-            .chars()
-            .map(|c| ((c.to_ascii_lowercase() as u32) - ('a' as u32) + 1).to_string())
-            .collect::<String>()
-            .parse::<u32>()
-            .map_err(|err| {
-                format!("Unable to convert word to number: {word}. Original error: {err}")
-            });
-        word_as_number_string
     }
 
     // main logic
 
-    fn solve_cypher(&self) -> Vec<NumericCoreState> {
-        let current_cypher = self.get_numeric_cypher();
+    // @TODO: this needs to return something properly, this is heavy WIP
+    fn solve_cypher(&self) -> Vec<FinalState> {
+        let current_cypher = self;
 
         let numeric_cores = current_cypher
             .iter()
@@ -151,6 +154,10 @@ impl NumericCoreSolver {
 
     pub fn get_numeric_cypher(&self) -> &[u32] {
         &self.numeric_cypher
+    }
+
+    pub fn get_state_cypher(&self) -> &[NumericCoreState] {
+        &self.state_cypher
     }
 }
 
