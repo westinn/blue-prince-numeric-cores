@@ -22,8 +22,8 @@ for each NumericCoreIteration,
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
-    string_cypher: Vec<String>,
-    numeric_cypher: Vec<u32>,
+    string_cypher: Vec<Result<String, InvalidStateError>>,
+    numeric_cypher: Vec<Result<u32, InvalidStateError>>,
     state_cypher: Vec<NumericCoreState>,
 }
 
@@ -41,19 +41,36 @@ impl NumericCoreSolver {
         let cypher_structure: (usize, usize) = Self::compute_cypher_structure(&file_contents)?;
 
         // start setting the cypher matrix versions
-        let string_cypher: Vec<String> = Self::convert_to_string_cypher(&file_contents)?;
-        let numeric_cypher: Vec<u32> = Self::convert_to_numeric_cypher(&string_cypher)?;
-        let state_cypher: Vec<NumericCoreState> = Self::convert_to_state_cypher(&numeric_cypher)?;
+        let string_cypher: Vec<Result<String, InvalidStateError>> =
+            Self::convert_to_string_cypher(&file_contents);
+        let numeric_cypher: Vec<Result<u32, InvalidStateError>> =
+            Self::convert_to_numeric_cypher(&string_cypher);
+        let state_cypher: Vec<NumericCoreState> = Self::convert_to_state_cypher(&numeric_cypher);
 
         Ok(NumericCoreSolver {
-            cypher_structure: cypher_structure,
-            string_cypher: string_cypher,
-            numeric_cypher: numeric_cypher,
-            state_cypher: state_cypher,
+            cypher_structure,
+            string_cypher,
+            numeric_cypher,
+            state_cypher,
         })
     }
 
     // static setters essentially
+
+    fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), String> {
+        /*
+        1 2 3
+        1 2 3 */
+        let y_cypher_rows: usize = file_contents.trim().lines().count(); // 2
+        let x_cypher_longest_row: usize = file_contents // 3
+            .trim()
+            .lines()
+            .max_by_key(|line| line.split_ascii_whitespace().count())
+            .ok_or("Could not find longest row in cypher. Error occurred during initial cypher creation during parsing.")?
+            .split_ascii_whitespace().count();
+        // (x, y)
+        Ok((x_cypher_longest_row, y_cypher_rows))
+    }
 
     fn convert_word_to_number(word: &str) -> Result<u32, String> {
         // will never have a non ascii alphabetical character due to solver constructor check
@@ -69,40 +86,31 @@ impl NumericCoreSolver {
         word_as_number_string
     }
 
-    fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), String> {
-        let cypher_rows: usize = file_contents.trim().lines().count();
-        let cypher_longest_row: usize = file_contents
-            .trim()
-            .lines()
-            .max_by_key(|line| line.chars().count())
-            .ok_or("Could not find longest row in cypher. Error occurred during initial cypher creation during parsing.")?
-            .chars().count();
-        Ok((cypher_rows, cypher_longest_row))
-    }
-
-    fn convert_to_string_cypher(file_contents: &str) -> Result<Vec<String>, String> {
+    fn convert_to_string_cypher(file_contents: &str) -> Vec<Result<String, InvalidStateError>> {
         // validate that there are only ascii alphabetic characters in the file
-        if let Some(faulty_word_input) = file_contents
+        file_contents
             .trim()
             .split_ascii_whitespace()
-            .find(|word| word.chars().any(|c: char| !c.is_ascii_alphabetic()))
-        {
-            Err(format!(
-                "Unable to parse word from cypher as ascii string: {faulty_word_input}"
-            ))
-        } else {
-            Ok(file_contents
-                .trim()
-                .split_ascii_whitespace()
-                .map(|word: &str| word.to_owned())
-                .collect())
-        }
+            .map(
+                |word: &str| match word.chars().any(|c: char| !c.is_ascii_alphabetic()) {
+                    true => Ok(word.to_owned()),
+                    false => Err(InvalidStateError),
+                },
+            )
+            .collect()
     }
 
-    fn convert_to_numeric_cypher(string_cypher: &[String]) -> Result<Vec<u32>, String> {
+    fn convert_to_numeric_cypher(
+        string_cypher: &[Result<String, InvalidStateError>],
+    ) -> Vec<Result<u32, InvalidStateError>> {
         string_cypher
             .iter()
-            .map(|word: &String| Self::convert_word_to_number(word))
+            .map(|word_or_invalid: &Result<String, InvalidStateError>| -> Result<u32, InvalidStateError> {
+                word_or_invalid.as_ref()
+                    .ok()
+                    .and_then(|word_value| Self::convert_word_to_number(&word_value).ok())
+                    .ok_or(InvalidStateError)
+            })
             .collect()
         // @TODO: Do I exit here if initial input contains something that turns into a NumericCoreState::Invalid?
         //        I would want that to only happen after processing value further in the state machine.
@@ -115,44 +123,48 @@ impl NumericCoreSolver {
         // });
     }
 
-    // @TODO: this converts it all to value states but doesn't further process them.
-    fn convert_to_state_cypher(numeric_cypher: &[u32]) -> Result<Vec<NumericCoreState>, String> {
-        Ok(numeric_cypher
+    fn convert_to_state_cypher(
+        numeric_cypher: &[Result<u32, InvalidStateError>],
+    ) -> Vec<NumericCoreState> {
+        // parses all numbers into NumericCoreState's
+        numeric_cypher
             .iter()
-            .map(|&num| {
-                ValueState::new(num)
-                    .map(Into::into)
-                    .unwrap_or_else(Into::into)
-            })
-            .collect())
+            .map(|num: &Result<u32, InvalidStateError>| NumericCoreState::new(num))
+            .collect()
     }
 
     // main logic
 
     // @TODO: this needs to return something properly, this is heavy WIP
-    fn solve_cypher(&self) -> Vec<FinalState> {
-        let current_cypher = self;
+    //        I know that I don't want the individual state objects to handle the recursion, only to handle the next iteration.
+    fn solve_cypher(&self) -> Vec<Option<NumericCoreValue>> {
+        let state_cypher: &[NumericCoreState] = self.get_state_cypher();
 
-        let numeric_cores = current_cypher
+        let numeric_cores = state_cypher
             .iter()
-            .map(|curr_line: &Vec<NumericCoreState>| {
-                curr_line
-                    .iter()
-                    .map(|curr_item: &NumericCoreState| curr_item.get_numeric_core())
-            });
+            .map(|current_state| {
+                let current_state_value = current_state.get_numeric_core();
+                match current_state_value {
+                    Ok(result_value) => result_value,
+                    Err(_e) => None,
+                }
+            })
+            .collect();
+
+        numeric_cores
     }
 
     // getters
 
-    pub fn get_cypher_structure(&self) -> (u32, u32) {
+    pub fn get_cypher_structure(&self) -> (usize, usize) {
         self.cypher_structure
     }
 
-    pub fn get_string_cypher(&self) -> &[String] {
+    pub fn get_string_cypher(&self) -> &Vec<Result<String, InvalidStateError>> {
         &self.string_cypher
     }
 
-    pub fn get_numeric_cypher(&self) -> &[u32] {
+    pub fn get_numeric_cypher(&self) -> &Vec<Result<u32, InvalidStateError>> {
         &self.numeric_cypher
     }
 

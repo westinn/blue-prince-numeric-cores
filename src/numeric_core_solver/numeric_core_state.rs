@@ -24,15 +24,42 @@ pub mod states {
     ResultState: this is a trait to reflect a state that has no more steps to consider, such as NumericCore or Invalid
     */
 
-    impl From<ValueState> for NumericCoreState {
-        fn from(value: ValueState) -> Self {
+    impl From<InvalidStateError> for NumericCoreState {
+        fn from(_value: InvalidStateError) -> Self {
+            NumericCoreState::Invalid
+        }
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) struct NumericCoreValue(u32);
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) struct ProcessableValue(u32);
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum NumericCoreState {
+        NumericCore(NumericCoreValue),
+        Processable(ProcessableValue),
+        Invalid,
+    }
+
+    /* // FinalState
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum FinalState {
+        NumericCore(NumericCoreValue),
+        Invalid,
+    }
+
+    impl TryFrom<NumericCoreState> for FinalState {
+        type Error = NotFinalStateError;
+
+        fn try_from(value: NumericCoreState) -> Result<Self, Self::Error> {
             match value {
-                ValueState::NumericCore(numeric_core_value) => {
-                    NumericCoreState::NumericCore(numeric_core_value)
+                NumericCoreState::NumericCore(numeric_core_value) => {
+                    Ok(FinalState::NumericCore(numeric_core_value))
                 }
-                ValueState::Processable(processable_value) => {
-                    NumericCoreState::Processable(processable_value)
-                }
+                NumericCoreState::Invalid => Ok(FinalState::Invalid),
+                _ => Err(NotFinalStateError),
             }
         }
     }
@@ -48,9 +75,61 @@ pub mod states {
         }
     }
 
-    impl From<InvalidStateError> for NumericCoreState {
-        fn from(_value: InvalidStateError) -> Self {
-            NumericCoreState::Invalid
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct NotFinalStateError;
+    */
+
+    /* // ValueState
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum ValueState {
+        NumericCore(NumericCoreValue),
+        Processable(ProcessableValue),
+    }
+
+    impl ValueState {
+        pub fn new<T>(input_value: Result<T, InvalidStateError>) -> Result<Self, InvalidStateError>
+        where
+            T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
+        {
+            if input_value <= T::zero()
+                || input_value
+                    .to_f64()
+                    .is_some_and(|float_value| float_value.fract() != 0.0)
+            {
+                return NumericCoreState::Invalid;
+            }
+
+            // bounds checking for final integer value, can simplify but being explicit here
+            match input_value.to_u32() {
+                Some(u32_value @ 1..1000) => {
+                    NumericCoreState::NumericCore(NumericCoreValue(u32_value))
+                }
+                Some(u32_value @ 1000..) => {
+                    NumericCoreState::Processable(ProcessableValue(u32_value))
+                }
+                Some(..=0) => NumericCoreState::Invalid,
+                _ => NumericCoreState::Invalid,
+            }
+        }
+
+        pub fn get_value(&self) -> u32 {
+            match self {
+                ValueState::NumericCore(numeric_core_value) => numeric_core_value.get_value(),
+                ValueState::Processable(processable_value) => processable_value.get_value(),
+            }
+        }
+    }
+
+    impl From<ValueState> for NumericCoreState {
+        fn from(value: ValueState) -> Self {
+            match value {
+                ValueState::NumericCore(numeric_core_value) => {
+                    NumericCoreState::NumericCore(numeric_core_value)
+                }
+                ValueState::Processable(processable_value) => {
+                    NumericCoreState::Processable(processable_value)
+                }
+            }
         }
     }
 
@@ -69,93 +148,88 @@ pub mod states {
             }
         }
     }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct NumericCoreValue(u32);
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct ProcessableValue(u32);
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum NumericCoreState {
-        NumericCore(NumericCoreValue),
-        Processable(ProcessableValue),
-        Invalid,
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum ValueState {
-        NumericCore(NumericCoreValue),
-        Processable(ProcessableValue),
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum FinalState {
-        NumericCore(NumericCoreValue),
-        Invalid,
-    }
-
-    impl ValueState {
-        pub fn get_value(&self) -> u32 {
-            match self {
-                ValueState::NumericCore(numeric_core_value) => numeric_core_value.get_value(),
-                ValueState::Processable(processable_value) => processable_value.get_value(),
-            }
-        }
-    }
+    */
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct InvalidStateError;
 
-    impl ValueState {
-        pub fn new<T>(input_value: T) -> Result<Self, InvalidStateError>
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct NoValidNumericCore;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct TooManyPossibleValues;
+
+    impl NumericCoreState {
+        pub(crate) fn new<T>(input_result: &Result<T, InvalidStateError>) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {
-            if input_value <= T::zero()
-                || input_value
-                    .to_f64()
-                    .is_some_and(|value| value.fract() != 0.0)
-            {
-                Err(InvalidStateError)
-            } else {
-                // bounds checking for final integer value
-                match input_value.to_u32() {
-                    Some(u32_value @ 1..1000) => {
-                        Ok(ValueState::NumericCore(NumericCoreValue(u32_value)))
+            let invalid_value = input_result.is_ok_and(|value| {
+                value <= T::zero()
+                    || value
+                        .to_f64()
+                        .is_some_and(|float_value| float_value.fract() != 0.0)
+            });
+            if invalid_value {
+                return NumericCoreState::Invalid;
+            }
+
+            // bounds checking for final integer value, can simplify but being explicit here
+            match input_result.ok().and_then(|v| v.to_u32()) {
+                Some(u32_value @ 1..1000) => {
+                    NumericCoreState::NumericCore(NumericCoreValue::new(u32_value))
+                }
+                Some(u32_value @ 1000..) => {
+                    NumericCoreState::Processable(ProcessableValue::new(u32_value))
+                }
+                Some(..=0) => NumericCoreState::Invalid,
+                _ => NumericCoreState::Invalid,
+            }
+        }
+
+        pub fn get_numeric_core(
+            mut self,
+        ) -> Result<Option<NumericCoreValue>, TooManyPossibleValues> {
+            // philosophically, I think it makes more sense for a single variant of a State to process only it's own state
+            // and then the greater enum to handle how as a whole these States should behave
+            // the solver can then apply that to each state individually
+            // and this can return proper values of: an actual value, no numeric core found, or an Error of too many values
+            loop {
+                match self {
+                    NumericCoreState::Invalid => break Ok(None),
+                    NumericCoreState::NumericCore(numeric_core_value) => {
+                        break Ok(Some(numeric_core_value));
                     }
-                    Some(u32_value @ 1000..) => {
-                        Ok(ValueState::Processable(ProcessableValue(u32_value)))
+                    NumericCoreState::Processable(processable_value) => {
+                        self = processable_value.process_value()?
                     }
-                    _ => Err(InvalidStateError),
                 }
             }
         }
     }
 
-    impl NumericCoreState {
-        // @TODO this is wrong since we don't want to return Value states, just the actual NumericCore state
-        // we dont want Processable, and we already handle Invalid via Errors now
-        pub fn get_numeric_core(self) -> Result<ValueState, InvalidStateError> {
-            ValueState::try_from(self)
-        }
-    }
-
     impl NumericCoreValue {
-        pub fn get_value(&self) -> u32 {
+        fn new(value: u32) -> Self {
+            Self(value)
+        }
+
+        fn get_value(&self) -> u32 {
             self.0
         }
     }
 
     impl ProcessableValue {
-        pub fn get_value(&self) -> u32 {
+        fn new(value: u32) -> Self {
+            Self(value)
+        }
+
+        fn get_value(&self) -> u32 {
             self.0
         }
 
-        fn process_value(self) -> FinalState {
+        fn process_value(self) -> Result<NumericCoreState, TooManyPossibleValues> {
             // get current value and digit groups
             let digit_groups: Vec<[u32; 4]> = self.value_to_digit_groups();
-            // this is cheap because it's all simple enums and arrays
             let binary_op_combos = &OP_COMBOS;
 
             /*
@@ -171,12 +245,12 @@ pub mod states {
                 .cartesian_product(digit_groups) //([OP; 4], [U32; 4])
                 .filter_map(
                     |(ops, digits): ([BinaryOp; NUM_OF_OPS], [u32; NUM_OF_OPS])| {
-                        let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] = zip(ops, digits)
-                            .collect_array()
-                            .expect("Failed to zip array of BinaryOp and Digits.");
-                        match zipped_op_digit.contains(&(Divide, 0)) {
-                            true => None,
-                            false => Some(zipped_op_digit),
+                        let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] = zip(ops, digits).collect_array()
+                            .expect("Failed to zip array of BinaryOp and Digits that would act as instructions to compute.");
+
+                        match !zipped_op_digit.contains(&(Divide, 0)) {
+                            true => Some(zipped_op_digit),
+                            false => None,
                         }
                     },
                 )
@@ -206,22 +280,39 @@ pub mod states {
 
             /*
             @TODO:
-            now that we have a list of all possible operations on all possible digit groups,
+            now that we have a list of the result of all possible operations on all possible digit groups,
             is there where I turn them all into NumericCoreStates and use their status to filter?
             if I just filter here, then if the criteria for numericcores changes, refactoring is a pain
             if I convert to numeric cores here, I delegate the state properly. then I filter off the most valid numericcorestate objects
             */
-            let state_results = op_digit_processed_results
-                .into_iter()
-                .map(|numeric_result: f64| -> NumericCoreState {
-                    NumericCoreState::new(numeric_result).get_numeric_core()
-                })
-                .filter(|state| match state {
-                    NumericCoreState::NumericCore(_) => true,
-                    NumericCoreState::Invalid => false,
-                });
 
-            todo!()
+            // this is the reduction of the many numeric_results into NumericCoreStates
+            // at this point, we have many potential State objects (of all kinds)
+            // due to how numeric cores work, this SHOULD result in a single number after filtering for valid ones (NumericCore and Processable)
+            // perhaps using an assert is valid here, givan that otherwise, this whole thing is wrong.
+            let state_results: Vec<NumericCoreState> = op_digit_processed_results
+                .into_iter()
+                .map(|float_result| NumericCoreState::new(&Ok(float_result)))
+                .filter(|&curr_state| !matches!(curr_state, NumericCoreState::Invalid))
+                .collect();
+
+            // can return 1 value, No value, or an Error of MANY values
+            match state_results.into_iter().at_most_one() {
+                Ok(Some(state)) => Ok(state),
+                Ok(None) => Ok(NumericCoreState::Invalid),
+                Err(recovered_iter) => {
+                    eprintln!(
+                        "std::ExactlyOneError: There should only be a single value after processing a ProcessableState item but found: {}. Data: {:?}",
+                        recovered_iter.len(),
+                        recovered_iter
+                    );
+                    Err(TooManyPossibleValues)
+                }
+            }
+            // .expect(
+            //     "",
+            // );
+            // final_result
         }
 
         fn value_to_digit_groups(&self) -> Vec<[u32; 4]> {
