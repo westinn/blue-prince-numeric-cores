@@ -9,6 +9,7 @@ pub mod states {
     use std::{
         fmt::{Debug, Display},
         iter::zip,
+        ops::Rem,
     };
 
     mod binary_ops;
@@ -47,7 +48,7 @@ pub mod states {
     pub struct InvalidStateError;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    struct NoValidNumericCore;
+    struct _NoValidNumericCore;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct TooManyPossibleValues;
@@ -174,13 +175,12 @@ pub mod states {
                 )
                 .collect();
 
-            /*
-            @TODO:
-            now that we have a list of the result of all possible operations on all possible digit groups,
-            is there where I turn them all into NumericCoreStates and use their status to filter?
-            if I just filter here, then if the criteria for numericcores changes, refactoring is a pain
-            if I convert to numeric cores here, I delegate the state properly. then I filter off the most valid numericcorestate objects
-            */
+            dbg!(
+                &op_digit_processed_results
+                    .iter()
+                    .filter(|x| x.is_sign_positive() && x.rem(1.0) == 0.0)
+                    .collect_vec()
+            );
 
             // this is the reduction of the many numeric_results into NumericCoreStates
             // at this point, we have many potential State objects (of all kinds)
@@ -198,17 +198,13 @@ pub mod states {
                 Ok(None) => Ok(NumericCoreState::Invalid),
                 Err(recovered_iter) => {
                     eprintln!(
-                        "std::ExactlyOneError: There should only be a single value after processing a ProcessableState item but found: {}. Data: {:?}",
+                        "std::ExactlyOneError: There should only be a single value after processing a ProcessableState item but found: {}.\nData: {:?}",
                         recovered_iter.len(),
                         recovered_iter
                     );
                     Err(TooManyPossibleValues)
                 }
             }
-            // .expect(
-            //     "",
-            // );
-            // final_result
         }
 
         fn value_to_digit_groups(&self) -> Vec<[u32; 4]> {

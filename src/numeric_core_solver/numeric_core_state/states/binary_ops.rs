@@ -25,9 +25,9 @@ pub mod ops {
                 .map(|no_add_op_combo: Vec<BinaryOp>| -> [BinaryOp; 4] {
                     [
                         Add,
+                        no_add_op_combo[0],
                         no_add_op_combo[1],
                         no_add_op_combo[2],
-                        no_add_op_combo[3],
                     ]
                 })
                 .collect_array()

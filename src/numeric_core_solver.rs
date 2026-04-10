@@ -94,8 +94,8 @@ impl NumericCoreSolver {
             .split_ascii_whitespace()
             .map(
                 |word: &str| match word.chars().any(|c: char| !c.is_ascii_alphabetic()) {
-                    true => Ok(word.to_owned()),
-                    false => Err(InvalidStateError),
+                    true => Err(InvalidStateError),
+                    false => Ok(word.to_owned()),
                 },
             )
             .collect()
@@ -127,9 +127,7 @@ impl NumericCoreSolver {
 
     // main logic
 
-    // @TODO: this needs to return something properly, this is heavy WIP
-    //        I know that I don't want the individual state objects to handle the recursion, only to handle the next iteration.
-    fn solve_cypher(&self) -> Vec<Option<NumericCoreValue>> {
+    pub fn solve_cypher(&self) -> Vec<Option<NumericCoreValue>> {
         let state_cypher: &[NumericCoreState] = self.get_state_cypher();
 
         let numeric_cores = state_cypher
