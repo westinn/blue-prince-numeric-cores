@@ -11,12 +11,12 @@ fn debug() {
         NumericCoreSolver::new("./inputs/cypher.txt").unwrap();
 
     let structure: (usize, usize) = numeric_core_solver.get_cypher_structure();
-    let string_cypoher = numeric_core_solver.get_string_cypher();
+    let string_cypher = numeric_core_solver.get_string_cypher();
     let numeric_cypher = numeric_core_solver.get_numeric_cypher();
     let state_cypher = numeric_core_solver.get_state_cypher();
 
     println!("\n{structure:?}");
-    println!("\n{string_cypoher:?}");
+    println!("\n{string_cypher:?}");
     println!("\n{numeric_cypher:?}");
     println!("\n{state_cypher:?}");
 }

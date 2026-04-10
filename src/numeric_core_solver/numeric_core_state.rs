@@ -31,136 +31,29 @@ pub mod states {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) struct NumericCoreValue(u32);
+    pub struct NumericCoreValue(u32);
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) struct ProcessableValue(u32);
+    pub struct ProcessableValue(u32);
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) enum NumericCoreState {
+    pub enum NumericCoreState {
         NumericCore(NumericCoreValue),
         Processable(ProcessableValue),
         Invalid,
     }
-
-    /* // FinalState
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum FinalState {
-        NumericCore(NumericCoreValue),
-        Invalid,
-    }
-
-    impl TryFrom<NumericCoreState> for FinalState {
-        type Error = NotFinalStateError;
-
-        fn try_from(value: NumericCoreState) -> Result<Self, Self::Error> {
-            match value {
-                NumericCoreState::NumericCore(numeric_core_value) => {
-                    Ok(FinalState::NumericCore(numeric_core_value))
-                }
-                NumericCoreState::Invalid => Ok(FinalState::Invalid),
-                _ => Err(NotFinalStateError),
-            }
-        }
-    }
-
-    impl From<FinalState> for NumericCoreState {
-        fn from(result: FinalState) -> Self {
-            match result {
-                FinalState::NumericCore(numeric_core_value) => {
-                    NumericCoreState::NumericCore(numeric_core_value)
-                }
-                FinalState::Invalid => NumericCoreState::Invalid,
-            }
-        }
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct NotFinalStateError;
-    */
-
-    /* // ValueState
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum ValueState {
-        NumericCore(NumericCoreValue),
-        Processable(ProcessableValue),
-    }
-
-    impl ValueState {
-        pub fn new<T>(input_value: Result<T, InvalidStateError>) -> Result<Self, InvalidStateError>
-        where
-            T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
-        {
-            if input_value <= T::zero()
-                || input_value
-                    .to_f64()
-                    .is_some_and(|float_value| float_value.fract() != 0.0)
-            {
-                return NumericCoreState::Invalid;
-            }
-
-            // bounds checking for final integer value, can simplify but being explicit here
-            match input_value.to_u32() {
-                Some(u32_value @ 1..1000) => {
-                    NumericCoreState::NumericCore(NumericCoreValue(u32_value))
-                }
-                Some(u32_value @ 1000..) => {
-                    NumericCoreState::Processable(ProcessableValue(u32_value))
-                }
-                Some(..=0) => NumericCoreState::Invalid,
-                _ => NumericCoreState::Invalid,
-            }
-        }
-
-        pub fn get_value(&self) -> u32 {
-            match self {
-                ValueState::NumericCore(numeric_core_value) => numeric_core_value.get_value(),
-                ValueState::Processable(processable_value) => processable_value.get_value(),
-            }
-        }
-    }
-
-    impl From<ValueState> for NumericCoreState {
-        fn from(value: ValueState) -> Self {
-            match value {
-                ValueState::NumericCore(numeric_core_value) => {
-                    NumericCoreState::NumericCore(numeric_core_value)
-                }
-                ValueState::Processable(processable_value) => {
-                    NumericCoreState::Processable(processable_value)
-                }
-            }
-        }
-    }
-
-    impl TryFrom<NumericCoreState> for ValueState {
-        type Error = InvalidStateError;
-
-        fn try_from(value: NumericCoreState) -> Result<Self, Self::Error> {
-            match value {
-                NumericCoreState::NumericCore(numeric_core_value) => {
-                    Ok(ValueState::NumericCore(numeric_core_value))
-                }
-                NumericCoreState::Processable(processable_value) => {
-                    Ok(ValueState::Processable(processable_value))
-                }
-                NumericCoreState::Invalid => Err(InvalidStateError),
-            }
-        }
-    }
-    */
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct InvalidStateError;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct NoValidNumericCore;
+    struct NoValidNumericCore;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct TooManyPossibleValues;
 
     impl NumericCoreState {
-        pub(crate) fn new<T>(input_result: &Result<T, InvalidStateError>) -> Self
+        pub fn new<T>(input_result: &Result<T, InvalidStateError>) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {
@@ -187,13 +80,16 @@ pub mod states {
             }
         }
 
-        pub fn get_numeric_core(
+        pub(crate) fn get_numeric_core(
             mut self,
         ) -> Result<Option<NumericCoreValue>, TooManyPossibleValues> {
-            // philosophically, I think it makes more sense for a single variant of a State to process only it's own state
-            // and then the greater enum to handle how as a whole these States should behave
+            /*
+            // philosophically, I think it makes more sense for a single variant of a State to process/consume only it's own state
+            //   and then the greater enum to handle how, as a whole, these States should behave
             // the solver can then apply that to each state individually
-            // and this can return proper values of: an actual value, no numeric core found, or an Error of too many values
+            //   and this can return proper values of:
+            //   an actual value, no numeric core found, or an Error of too many values
+             */
             loop {
                 match self {
                     NumericCoreState::Invalid => break Ok(None),
@@ -209,21 +105,21 @@ pub mod states {
     }
 
     impl NumericCoreValue {
-        fn new(value: u32) -> Self {
+        pub fn new(value: u32) -> Self {
             Self(value)
         }
 
-        fn get_value(&self) -> u32 {
+        pub fn get_value(&self) -> u32 {
             self.0
         }
     }
 
     impl ProcessableValue {
-        fn new(value: u32) -> Self {
+        pub fn new(value: u32) -> Self {
             Self(value)
         }
 
-        fn get_value(&self) -> u32 {
+        pub fn get_value(&self) -> u32 {
             self.0
         }
 
@@ -351,53 +247,58 @@ mod tests {
     #[test]
     fn numeric_core_states_new() {
         // numeric core values
-        let numeric_core1 = NumericCoreState::new(100);
-        let numeric_core2 = NumericCoreState::new(999);
+        let numeric_core1 = NumericCoreState::new(&Ok(100));
+        let numeric_core2 = NumericCoreState::new(&Ok(999));
         assert!(
-            matches!(numeric_core1.unwrap(), NumericCoreState::NumericCore(v) if v.get() == 100),
+            matches!(numeric_core1, NumericCoreState::NumericCore(numeric_core_value) if numeric_core_value.get_value() == 100),
             "Expected NumericCore state with value 100."
         );
         assert!(
-            matches!(numeric_core2.unwrap(), NumericCoreState::NumericCore(v) if v.get() == 999),
+            matches!(numeric_core2, NumericCoreState::NumericCore(numeric_core_value) if numeric_core_value.get_value() == 999),
             "Expected NumericCore state with value 999."
         );
 
         // processable values
-        let processable_value_1 = NumericCoreState::new(1000);
-        let processable_value_2 = NumericCoreState::new(1500);
+        let processable_value_1 = NumericCoreState::new(&Ok(1000));
+        let processable_value_2 = NumericCoreState::new(&Ok(1500));
         assert!(
-            matches!(processable_value_1.unwrap(), NumericCoreState::Processable(v) if v.get_value() == 1000),
+            matches!(processable_value_1, NumericCoreState::Processable(processable_value) if processable_value.get_value() == 1000),
             "Expected Processable state with value 1000."
         );
         assert!(
-            matches!(processable_value_2.unwrap(), NumericCoreState::Processable(v) if v.get_value() == 1500),
+            matches!(processable_value_2, NumericCoreState::Processable(processable_value) if processable_value.get_value() == 1500),
             "Expected Processable state with value 1500."
         );
 
         // invalid inputs, fractional
-        let invalid_zero_1 = NumericCoreState::new(0.0);
-        let invalid_fraction_1 = NumericCoreState::new(10.2);
-        let invalid_fraction_2 = NumericCoreState::new(100.2);
-        let invalid_negative_1 = NumericCoreState::new(-100);
-        let invalid_negative_2 = NumericCoreState::new(-10.2);
+        let invalid_zero_1 = NumericCoreState::new(&Ok(0));
+        let invalid_zero_2 = NumericCoreState::new(&Ok(0.0));
+        let invalid_fraction_1 = NumericCoreState::new(&Ok(10.2));
+        let invalid_fraction_2 = NumericCoreState::new(&Ok(100.2));
+        let invalid_negative_1 = NumericCoreState::new(&Ok(-100));
+        let invalid_negative_2 = NumericCoreState::new(&Ok(-10.2));
         assert!(
-            matches!(invalid_zero_1.unwrap(), NumericCoreState::Invalid),
+            matches!(invalid_zero_1, NumericCoreState::Invalid),
             "Expected Invalid state for zero input."
         );
         assert!(
-            matches!(invalid_fraction_1.unwrap(), NumericCoreState::Invalid),
+            matches!(invalid_zero_2, NumericCoreState::Invalid),
+            "Expected Invalid state for zero input."
+        );
+        assert!(
+            matches!(invalid_fraction_1, NumericCoreState::Invalid),
             "Expected Invalid state for fractional input."
         );
         assert!(
-            matches!(invalid_fraction_2.unwrap(), NumericCoreState::Invalid),
+            matches!(invalid_fraction_2, NumericCoreState::Invalid),
             "Expected Invalid state for fractional input."
         );
         assert!(
-            matches!(invalid_negative_1.unwrap(), NumericCoreState::Invalid),
+            matches!(invalid_negative_1, NumericCoreState::Invalid),
             "Expected Invalid state for negative input."
         );
         assert!(
-            matches!(invalid_negative_2.unwrap(), NumericCoreState::Invalid),
+            matches!(invalid_negative_2, NumericCoreState::Invalid),
             "Expected Invalid state for negative input."
         );
     }

@@ -67,7 +67,8 @@ impl NumericCoreSolver {
             .lines()
             .max_by_key(|line| line.split_ascii_whitespace().count())
             .ok_or("Could not find longest row in cypher. Error occurred during initial cypher creation during parsing.")?
-            .split_ascii_whitespace().count();
+            .split_ascii_whitespace()
+            .count();
         // (x, y)
         Ok((x_cypher_longest_row, y_cypher_rows))
     }
@@ -112,21 +113,12 @@ impl NumericCoreSolver {
                     .ok_or(InvalidStateError)
             })
             .collect()
-        // @TODO: Do I exit here if initial input contains something that turns into a NumericCoreState::Invalid?
-        //        I would want that to only happen after processing value further in the state machine.
-        //        But maybe faulty input is fine since later values are not dependant on earlier values
-        // @TODO: related to above todo, in case we do want to error out of an initial bad input state
-        // let any_invalid_inputs = converted_to_numeric_cypher.iter().any(|vec_of_state| {
-        //     vec_of_state
-        //         .iter()
-        //         .any(|state| matches!(state, NumericCoreState::Invalid))
-        // });
     }
 
     fn convert_to_state_cypher(
         numeric_cypher: &[Result<u32, InvalidStateError>],
     ) -> Vec<NumericCoreState> {
-        // parses all numbers into NumericCoreState's
+        // parses all numbers into NumericCoreStates
         numeric_cypher
             .iter()
             .map(|num: &Result<u32, InvalidStateError>| NumericCoreState::new(num))
