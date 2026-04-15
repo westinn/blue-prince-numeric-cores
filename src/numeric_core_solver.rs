@@ -1,8 +1,10 @@
 use std::{fmt::Debug, fs, u32};
 
 mod numeric_core_state;
+mod parsers;
 
 use numeric_core_state::states::*;
+use parsers::{FileParseError, get_file_contents};
 
 /*
 take cypher as matrix of strings
@@ -29,13 +31,12 @@ pub struct NumericCoreSolver {
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, String> {
-        let file_contents: String = fs::read_to_string(cypher_file_path)
-            .expect(&format!("Unable to read file: {}", cypher_file_path));
-        if file_contents.is_empty() {
-            return Err(format!("Input file was empty: {cypher_file_path}"));
-        }
-
-        // can probably combine a lot of these steps into a single iterator with complex processing logic in a blocks, but this works for now
+        let file_contents = parsers::get_file_contents(cypher_file_path).map_err(|e| match e {
+            FileParseError::Io(io_error) => {
+                eprintln!("OS Error while reading {cypher_file_path}: {}", io_error)
+            }
+            FileParseError::InputFileEmptyError(message) => eprintln!("{}", message),
+        });
 
         // get cypher structure
         let cypher_structure: (usize, usize) = Self::compute_cypher_structure(&file_contents)?;
@@ -53,76 +54,6 @@ impl NumericCoreSolver {
             numeric_cypher,
             state_cypher,
         })
-    }
-
-    // static setters essentially
-
-    fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), String> {
-        /*
-        1 2 3
-        1 2 3 */
-        let y_cypher_rows: usize = file_contents.trim().lines().count(); // 2
-        let x_cypher_longest_row: usize = file_contents // 3
-            .trim()
-            .lines()
-            .max_by_key(|line| line.split_ascii_whitespace().count())
-            .ok_or("Could not find longest row in cypher. Error occurred during initial cypher creation during parsing.")?
-            .split_ascii_whitespace()
-            .count();
-        // (x, y)
-        Ok((x_cypher_longest_row, y_cypher_rows))
-    }
-
-    fn convert_word_to_number(word: &str) -> Result<u32, String> {
-        // will never have a non ascii alphabetical character due to solver constructor check
-        // thus will never be out of bounds
-        let word_as_number_string: Result<u32, String> = word
-            .chars()
-            .map(|c| ((c.to_ascii_lowercase() as u32) - ('a' as u32) + 1).to_string())
-            .collect::<String>()
-            .parse::<u32>()
-            .map_err(|err| {
-                format!("Unable to convert word to number: {word}. Original error: {err}")
-            });
-        word_as_number_string
-    }
-
-    fn convert_to_string_cypher(file_contents: &str) -> Vec<Result<String, InvalidStateError>> {
-        // validate that there are only ascii alphabetic characters in the file
-        file_contents
-            .trim()
-            .split_ascii_whitespace()
-            .map(
-                |word: &str| match word.chars().any(|c: char| !c.is_ascii_alphabetic()) {
-                    true => Err(InvalidStateError),
-                    false => Ok(word.to_owned()),
-                },
-            )
-            .collect()
-    }
-
-    fn convert_to_numeric_cypher(
-        string_cypher: &[Result<String, InvalidStateError>],
-    ) -> Vec<Result<u32, InvalidStateError>> {
-        string_cypher
-            .iter()
-            .map(|word_or_invalid: &Result<String, InvalidStateError>| -> Result<u32, InvalidStateError> {
-                word_or_invalid.as_ref()
-                    .ok()
-                    .and_then(|word_value| Self::convert_word_to_number(&word_value).ok())
-                    .ok_or(InvalidStateError)
-            })
-            .collect()
-    }
-
-    fn convert_to_state_cypher(
-        numeric_cypher: &[Result<u32, InvalidStateError>],
-    ) -> Vec<NumericCoreState> {
-        // parses all numbers into NumericCoreStates
-        numeric_cypher
-            .iter()
-            .map(|num: &Result<u32, InvalidStateError>| NumericCoreState::new(num))
-            .collect()
     }
 
     // main logic

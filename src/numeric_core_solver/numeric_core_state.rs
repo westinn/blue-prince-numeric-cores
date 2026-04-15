@@ -54,7 +54,7 @@ pub mod states {
     pub struct TooManyPossibleValues;
 
     impl NumericCoreState {
-        pub fn new<T>(input_result: &Result<T, InvalidStateError>) -> Self
+        pub fn new<T>(input_result: T) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {

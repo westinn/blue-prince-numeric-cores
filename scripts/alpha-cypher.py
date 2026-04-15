@@ -34,7 +34,7 @@ class NumericCoreCalculator:
     @staticmethod
     def is_processable(number: Number) -> TypeIs[int]:
         try:
-            val: float = float(number)
+            val = float(number)
             return val > 0 and val % 1 == 0 and val >= 1000
         except (ValueError, TypeError):
             return False
@@ -62,7 +62,7 @@ class NumericCoreCalculator:
         ## but we actually need no decimals for length, even if 10.0 passes
         digits: list[str] = [d for d in str(int(number))]
 
-        ## in terms of possible spots to split a number, there are "len(number) - 1" possible locations
+        ## in terms of possible spots to split a number, there are "len(number) - 1" possible locationss
         ## in terms of how many splits we need to pick, there is "groups_needed - 1" amount, so 3 for us
         groups_needed = 4
         all_split_spots: list[list[int]] = [
@@ -103,9 +103,7 @@ class NumericCoreCalculator:
             op_combo
             for no_add_op_combo in permutations(ops[1:])
             if (operator.truediv, 0)
-            not in zip[tuple[BinaryOp, int]](
-                op_combo := ops[:1] + list(no_add_op_combo), digit_group
-            )
+            not in zip(op_combo := ops[:1] + list(no_add_op_combo), digit_group)
         ]
 
         def apply_ops(
