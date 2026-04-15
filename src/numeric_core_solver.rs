@@ -31,12 +31,13 @@ pub struct NumericCoreSolver {
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, String> {
-        let file_contents = parsers::get_file_contents(cypher_file_path).map_err(|e| match e {
-            FileParseError::Io(io_error) => {
-                eprintln!("OS Error while reading {cypher_file_path}: {}", io_error)
-            }
-            FileParseError::InputFileEmptyError(message) => eprintln!("{}", message),
-        });
+        let file_contents =
+            parsers::get_file_contents(cypher_file_path).map_err(|e: FileParseError| match e {
+                FileParseError::Io(io_error) => {
+                    eprintln!("OS Error while reading {cypher_file_path}: {}", io_error)
+                }
+                FileParseError::InputFileEmptyError(message) => eprintln!("{}", message),
+            });
 
         // get cypher structure
         let cypher_structure: (usize, usize) = Self::compute_cypher_structure(&file_contents)?;

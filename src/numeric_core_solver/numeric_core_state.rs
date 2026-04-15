@@ -44,21 +44,21 @@ pub mod states {
         Invalid,
     }
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct InvalidStateError;
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct InvalidStateError(pub String);
 
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    struct _NoValidNumericCore;
+    // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    // struct _NoValidNumericCore;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct TooManyPossibleValues;
 
     impl NumericCoreState {
-        pub fn new<T>(input_result: T) -> Self
+        pub fn new<T>(input_result: Option<T>) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {
-            let invalid_value = input_result.is_ok_and(|value| {
+            let invalid_value = input_result.is_some_and(|value| {
                 value <= T::zero()
                     || value
                         .to_f64()
@@ -69,15 +69,14 @@ pub mod states {
             }
 
             // bounds checking for final integer value, can simplify but being explicit here
-            match input_result.ok().and_then(|v| v.to_u32()) {
+            match input_result.and_then(|v| v.to_u32()) {
                 Some(u32_value @ 1..1000) => {
                     NumericCoreState::NumericCore(NumericCoreValue::new(u32_value))
                 }
                 Some(u32_value @ 1000..) => {
                     NumericCoreState::Processable(ProcessableValue::new(u32_value))
                 }
-                Some(..=0) => NumericCoreState::Invalid,
-                _ => NumericCoreState::Invalid,
+                Some(..=0) | None => NumericCoreState::Invalid,
             }
         }
 
