@@ -4,7 +4,7 @@ mod numeric_core_state;
 mod parsers;
 
 use numeric_core_state::states::*;
-use parsers::{FileParseError, get_file_contents};
+use parsers::
 
 /*
 take cypher as matrix of strings
@@ -24,15 +24,13 @@ for each NumericCoreIteration,
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
-    string_cypher: Vec<Result<String, InvalidStateError>>,
-    numeric_cypher: Vec<Result<u32, InvalidStateError>>,
-    state_cypher: Vec<NumericCoreState>,
+    cypher: Vec<CypherTokens>,
 }
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, String> {
         let file_contents =
-            parsers::get_file_contents(cypher_file_path).map_err(|e: FileParseError| match e {
+            parsers::read_file_contents(cypher_file_path).map_err(|e: FileParseError| match e {
                 FileParseError::Io(io_error) => {
                     eprintln!("OS Error while reading {cypher_file_path}: {}", io_error)
                 }

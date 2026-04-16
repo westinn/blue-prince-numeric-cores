@@ -53,17 +53,28 @@ pub mod states {
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct TooManyPossibleValues;
 
+    // not sure if we use this anyway to be honest
+    impl<T> From<T> for NumericCoreState
+    where
+        T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
+    {
+        fn from(value: T) -> Self {
+            NumericCoreState::new(Some(value))
+        }
+    }
+
     impl NumericCoreState {
         pub fn new<T>(input_result: Option<T>) -> Self
         where
             T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
         {
-            let invalid_value = input_result.is_some_and(|value| {
-                value <= T::zero()
-                    || value
-                        .to_f64()
-                        .is_some_and(|float_value| float_value.fract() != 0.0)
-            });
+            let invalid_value = input_result.is_none()
+                || input_result.is_some_and(|value| {
+                    value <= T::zero()
+                        || value
+                            .to_f64()
+                            .is_some_and(|float_value| float_value.fract() != 0.0)
+                });
             if invalid_value {
                 return NumericCoreState::Invalid;
             }
