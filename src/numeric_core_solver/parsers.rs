@@ -1,11 +1,6 @@
-use std::{
-    fs::{self},
-    io, num,
-};
-
-use itertools::Itertools;
-
 use super::numeric_core_state::states::NumericCoreState;
+use itertools::Itertools;
+use std::{fs, io, num};
 
 // ===============================================
 // Utilities
