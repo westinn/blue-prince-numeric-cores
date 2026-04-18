@@ -43,12 +43,15 @@ fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), Strin
 // ===============================================
 
 #[derive(Debug, Clone)]
-struct CypherToken {
+pub(crate) struct CypherToken {
+    // string as input from file
+    pub raw_text: String,
     // we either parse a valid string or error
     pub string_value: Result<String, FileParseError>,
-    // we either parse a valid number or dont. but we also could have previous errors and thus no numeric_value to read from
+    // we either parse a valid number or dont
+    // but we also could have previous errors and thus no numeric_value to read from
     pub numeric_value: Option<Result<u32, FileParseError>>,
-    pub state: NumericCoreState,
+    pub core_state: NumericCoreState,
 }
 
 #[derive(Debug, Clone)]
@@ -112,36 +115,37 @@ fn number_to_state(num: Option<u32>) -> NumericCoreState {
 }
 
 // ===============================================
-// larger orchestrators
+// larger orchestrators + related From function
 // ===============================================
 
-// you COULD move the internal logic into a larger From method and convert raw text Into::into -> CypherTokens
-// if word is valid
-// then we can calculate numeric value -> Some(Result<u32, FileParseError>)
-//     (aka some value that could fail in conversion)
-// else we set numeric value to None because theres no error from the number conversion,
-//     just there just isnt any value to convert in the first place
 fn file_path_to_cypher_tokens(cypher_file_path: &str) -> Result<Vec<CypherToken>, FileParseError> {
     Ok(read_file_contents(cypher_file_path)?
         .split_ascii_whitespace()
-        .map(|file_word| -> CypherToken {
-            let word: Result<String, FileParseError> = file_word_to_string(file_word);
-
-            let numeric_value: Option<Result<u32, FileParseError>> = match &word {
-                Ok(word_value) => Some(string_to_number(word_value)),
-                Err(_) => None,
-            };
-
-            let state: NumericCoreState = match &numeric_value {
-                Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
-                Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
-            };
-
-            CypherToken {
-                string_value: word,
-                numeric_value: numeric_value,
-                state: state,
-            }
-        })
+        .map(Into::into)
         .collect_vec())
+}
+
+// take a file's pre-parsed word strings, validate thenm, then, convert them to tokens
+impl From<&str> for CypherToken {
+    fn from(file_word: &str) -> Self {
+        let raw_text: String = file_word.to_owned();
+        let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
+
+        let numeric_value: Option<Result<u32, FileParseError>> = match &string_value {
+            Ok(string_value) => Some(string_to_number(string_value)),
+            Err(_) => None,
+        };
+
+        let core_state: NumericCoreState = match &numeric_value {
+            Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
+            Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
+        };
+
+        CypherToken {
+            raw_text,
+            string_value,
+            numeric_value,
+            core_state,
+        }
+    }
 }

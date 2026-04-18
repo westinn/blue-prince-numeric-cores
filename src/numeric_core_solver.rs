@@ -4,7 +4,7 @@ mod numeric_core_state;
 mod parsers;
 
 use numeric_core_state::states::*;
-use parsers::
+use parsers::CypherToken;
 
 /*
 take cypher as matrix of strings
@@ -24,7 +24,7 @@ for each NumericCoreIteration,
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
-    cypher: Vec<CypherTokens>,
+    cypher: Vec<CypherToken>,
 }
 
 impl NumericCoreSolver {
