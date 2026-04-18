@@ -120,7 +120,7 @@ pub mod states {
             Self(value)
         }
 
-        pub fn get_value(&self) -> u32 {
+        pub fn _get_value(&self) -> u32 {
             self.0
         }
     }
@@ -198,7 +198,7 @@ pub mod states {
             // perhaps using an assert is valid here, givan that otherwise, this whole thing is wrong.
             let state_results: Vec<NumericCoreState> = op_digit_processed_results
                 .into_iter()
-                .map(|float_result| NumericCoreState::new(&Ok(float_result)))
+                .map(|float_result| NumericCoreState::new(Some(float_result)))
                 .filter(|&curr_state| !matches!(curr_state, NumericCoreState::Invalid))
                 .collect();
 
@@ -253,8 +253,8 @@ mod tests {
     #[test]
     fn numeric_core_states_new() {
         // numeric core values
-        let numeric_core1 = NumericCoreState::new(&Ok(100));
-        let numeric_core2 = NumericCoreState::new(&Ok(999));
+        let numeric_core1 = NumericCoreState::new(Some(100));
+        let numeric_core2 = NumericCoreState::new(Some(999));
         assert!(
             matches!(numeric_core1, NumericCoreState::NumericCore(numeric_core_value) if numeric_core_value.get_value() == 100),
             "Expected NumericCore state with value 100."
@@ -265,8 +265,8 @@ mod tests {
         );
 
         // processable values
-        let processable_value_1 = NumericCoreState::new(&Ok(1000));
-        let processable_value_2 = NumericCoreState::new(&Ok(1500));
+        let processable_value_1 = NumericCoreState::new(Some(1000));
+        let processable_value_2 = NumericCoreState::new(Some(1500));
         assert!(
             matches!(processable_value_1, NumericCoreState::Processable(processable_value) if processable_value.get_value() == 1000),
             "Expected Processable state with value 1000."
@@ -277,12 +277,12 @@ mod tests {
         );
 
         // invalid inputs, fractional
-        let invalid_zero_1 = NumericCoreState::new(&Ok(0));
-        let invalid_zero_2 = NumericCoreState::new(&Ok(0.0));
-        let invalid_fraction_1 = NumericCoreState::new(&Ok(10.2));
-        let invalid_fraction_2 = NumericCoreState::new(&Ok(100.2));
-        let invalid_negative_1 = NumericCoreState::new(&Ok(-100));
-        let invalid_negative_2 = NumericCoreState::new(&Ok(-10.2));
+        let invalid_zero_1 = NumericCoreState::new(Some(0));
+        let invalid_zero_2 = NumericCoreState::new(Some(0.0));
+        let invalid_fraction_1 = NumericCoreState::new(Some(10.2));
+        let invalid_fraction_2 = NumericCoreState::new(Some(100.2));
+        let invalid_negative_1 = NumericCoreState::new(Some(-100));
+        let invalid_negative_2 = NumericCoreState::new(Some(-10.2));
         assert!(
             matches!(invalid_zero_1, NumericCoreState::Invalid),
             "Expected Invalid state for zero input."

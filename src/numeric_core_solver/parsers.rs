@@ -1,6 +1,56 @@
 use super::numeric_core_state::states::NumericCoreState;
 use itertools::Itertools;
-use std::{fs, io, num};
+use std::{fmt::Display, fs, io, num};
+
+// ===============================================
+// Types
+// ===============================================
+
+#[derive(Debug, Clone)]
+pub(crate) struct CypherToken {
+    // string as input from file
+    pub raw_text: String,
+    // we either parse a valid string or error
+    pub(crate) string_value: Result<String, FileParseError>,
+    // we either parse a valid number or dont
+    // but we also could have previous errors and thus no numeric_value to read from
+    pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
+    pub core_state: NumericCoreState,
+}
+
+impl Display for CypherToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "({:?}, {:?}, {:?}, {:?})",
+            self.raw_text, self.string_value, self.numeric_value, self.core_state
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+// @TODO: dead code?
+pub enum FileParseError {
+    // wrap the standard library IO error
+    Io(String),
+    InputFileEmptyError(String),
+    NonAsciiWord(String),
+    U32ParseError(num::ParseIntError),
+    RowParseError(String),
+}
+
+impl From<io::Error> for FileParseError {
+    fn from(value: io::Error) -> Self {
+        FileParseError::Io(value.to_string())
+    }
+}
+
+impl From<num::ParseIntError> for FileParseError {
+    fn from(value: num::ParseIntError) -> Self {
+        FileParseError::U32ParseError(value)
+    }
+}
 
 // ===============================================
 // Utilities
@@ -18,15 +68,16 @@ fn read_file_contents(cypher_file_path: &str) -> Result<String, FileParseError> 
     }
 }
 
-fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), String> {
-    /*
-    1 2 3
-    1 2 3 */
-    let y_cypher_rows: usize = file_contents.lines().count(); // 2
-    let x_cypher_longest_row: usize = file_contents // 3
+pub(crate) fn compute_cypher_structure(
+    cypher_file_path: &str,
+) -> Result<(usize, usize), FileParseError> {
+    let file_contents: String = read_file_contents(cypher_file_path)?;
+
+    let y_cypher_rows = file_contents.lines().count(); // 2
+    let x_cypher_longest_row = file_contents // 3
             .lines()
             .max_by_key(|line| line.split_ascii_whitespace().count())
-            .ok_or("Could not find longest row in cypher. Error occurred during initial cypher creation during parsing.")?
+            .ok_or(FileParseError::RowParseError("Could not find longest row in cypher. Error occurred during initial cypher structure parsing.".to_owned()))?
             .split_ascii_whitespace()
             .count();
     // (x, y)
@@ -34,48 +85,11 @@ fn compute_cypher_structure(file_contents: &str) -> Result<(usize, usize), Strin
 }
 
 // ===============================================
-// Types
-// ===============================================
-
-#[derive(Debug, Clone)]
-pub(crate) struct CypherToken {
-    // string as input from file
-    pub raw_text: String,
-    // we either parse a valid string or error
-    pub string_value: Result<String, FileParseError>,
-    // we either parse a valid number or dont
-    // but we also could have previous errors and thus no numeric_value to read from
-    pub numeric_value: Option<Result<u32, FileParseError>>,
-    pub core_state: NumericCoreState,
-}
-
-#[derive(Debug, Clone)]
-enum FileParseError {
-    // wrap the standard library IO error
-    Io(String),
-    InputFileEmptyError(String),
-    NonAsciiWord(String),
-    U32ParseError(num::ParseIntError),
-}
-
-impl From<io::Error> for FileParseError {
-    fn from(value: io::Error) -> Self {
-        FileParseError::Io(value.to_string())
-    }
-}
-
-impl From<num::ParseIntError> for FileParseError {
-    fn from(value: num::ParseIntError) -> Self {
-        FileParseError::U32ParseError(value)
-    }
-}
-
-// ===============================================
 // Main Logic
 // ===============================================
 
 // ===============================================
-// Inidividual word parsing
+// Inidividual value parsing
 // ===============================================
 
 // file word -> valid string
@@ -103,17 +117,13 @@ fn string_to_number(word: &str) -> Result<u32, FileParseError> {
         .map_or_else(|e| Err(FileParseError::U32ParseError(e)), |value| Ok(value))
 }
 
-// number to numeric core state
-// this could be a From
-fn number_to_state(num: Option<u32>) -> NumericCoreState {
-    NumericCoreState::new(num)
-}
-
 // ===============================================
 // larger orchestrators + related From function
 // ===============================================
 
-fn file_path_to_cypher_tokens(cypher_file_path: &str) -> Result<Vec<CypherToken>, FileParseError> {
+pub(crate) fn file_path_to_cypher_tokens(
+    cypher_file_path: &str,
+) -> Result<Vec<CypherToken>, FileParseError> {
     Ok(read_file_contents(cypher_file_path)?
         .split_ascii_whitespace()
         .map(Into::into)
@@ -125,17 +135,14 @@ impl From<&str> for CypherToken {
     fn from(file_word: &str) -> Self {
         let raw_text: String = file_word.to_owned();
         let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
-
         let numeric_value: Option<Result<u32, FileParseError>> = match &string_value {
             Ok(string_value) => Some(string_to_number(string_value)),
             Err(_) => None,
         };
-
         let core_state: NumericCoreState = match &numeric_value {
             Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
             Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
         };
-
         CypherToken {
             raw_text,
             string_value,

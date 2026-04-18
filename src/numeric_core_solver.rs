@@ -1,10 +1,10 @@
-use std::{fmt::Debug, fs, u32};
+use std::fmt::{Debug, Display};
 
 mod numeric_core_state;
 mod parsers;
 
 use numeric_core_state::states::*;
-use parsers::CypherToken;
+use parsers::{CypherToken, FileParseError};
 
 /*
 take cypher as matrix of strings
@@ -24,72 +24,69 @@ for each NumericCoreIteration,
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
-    cypher: Vec<CypherToken>,
+    cypher_tokens: Vec<CypherToken>,
 }
 
 impl NumericCoreSolver {
-    pub fn new(cypher_file_path: &str) -> Result<Self, String> {
-        let file_contents =
-            parsers::read_file_contents(cypher_file_path).map_err(|e: FileParseError| match e {
-                FileParseError::Io(io_error) => {
-                    eprintln!("OS Error while reading {cypher_file_path}: {}", io_error)
-                }
-                FileParseError::InputFileEmptyError(message) => eprintln!("{}", message),
-            });
-
+    pub fn new(cypher_file_path: &str) -> Result<Self, FileParseError> {
         // get cypher structure
-        let cypher_structure: (usize, usize) = Self::compute_cypher_structure(&file_contents)?;
-
-        // start setting the cypher matrix versions
-        let string_cypher: Vec<Result<String, InvalidStateError>> =
-            Self::convert_to_string_cypher(&file_contents);
-        let numeric_cypher: Vec<Result<u32, InvalidStateError>> =
-            Self::convert_to_numeric_cypher(&string_cypher);
-        let state_cypher: Vec<NumericCoreState> = Self::convert_to_state_cypher(&numeric_cypher);
+        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(cypher_file_path)?;
+        // get cypher tokens
+        let cypher_tokens: Vec<CypherToken> =
+            parsers::file_path_to_cypher_tokens(cypher_file_path)?;
 
         Ok(NumericCoreSolver {
             cypher_structure,
-            string_cypher,
-            numeric_cypher,
-            state_cypher,
+            cypher_tokens,
         })
     }
 
     // main logic
-
     pub fn solve_cypher(&self) -> Vec<Option<NumericCoreValue>> {
-        let state_cypher: &[NumericCoreState] = self.get_state_cypher();
-
-        let numeric_cores = state_cypher
+        self.get_cypher_tokens()
             .iter()
-            .map(|current_state| {
-                let current_state_value = current_state.get_numeric_core();
-                match current_state_value {
+            .map(|cypher_token: &CypherToken| -> Option<NumericCoreValue> {
+                //    Result<Option<NumericCoreValue>, TooManyPossibleValues>
+                match cypher_token.core_state.get_numeric_core() {
                     Ok(result_value) => result_value,
-                    Err(_e) => None,
+                    Err(e) => {
+                        // @TODO: this shouldn't happen so do we panic or just return no value for this token?
+                        eprintln!("{:?}", e);
+                        None
+                    }
                 }
             })
-            .collect();
-
-        numeric_cores
+            .collect()
     }
 
     // getters
-
-    pub fn get_cypher_structure(&self) -> (usize, usize) {
+    pub(crate) fn get_cypher_structure(&self) -> (usize, usize) {
         self.cypher_structure
     }
 
-    pub fn get_string_cypher(&self) -> &Vec<Result<String, InvalidStateError>> {
-        &self.string_cypher
+    pub(crate) fn get_cypher_tokens(&self) -> &[CypherToken] {
+        &self.cypher_tokens
     }
+}
 
-    pub fn get_numeric_cypher(&self) -> &Vec<Result<u32, InvalidStateError>> {
-        &self.numeric_cypher
-    }
+impl Display for NumericCoreSolver {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let (rows, columns) = self.get_cypher_structure();
+        let tokens = self.get_cypher_tokens();
 
-    pub fn get_state_cypher(&self) -> &[NumericCoreState] {
-        &self.state_cypher
+        let mut result_string = String::new();
+
+        (0..rows).for_each(|row| {
+            (0..columns).for_each(|col| {
+                let current_token: Option<&CypherToken> = tokens.get((row * col) + col);
+                result_string.push_str(&current_token.map_or_else(
+                    || "None".to_owned(),
+                    |token: &CypherToken| format!("{}", token),
+                ));
+            })
+        });
+
+        write!(f, "{}", result_string)
     }
 }
 
