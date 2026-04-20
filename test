@@ -1,0 +1,2 @@
+
+.map_or_else(|e| Err(FileParseError::U32ParseError(e)), |value| Ok(value))

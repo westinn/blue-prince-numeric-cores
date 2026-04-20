@@ -25,6 +25,7 @@ for each NumericCoreIteration,
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
     cypher_tokens: Vec<CypherToken>,
+    cypher: Vec<NumericCoreState>,
 }
 
 impl NumericCoreSolver {
@@ -39,6 +40,19 @@ impl NumericCoreSolver {
             cypher_structure,
             cypher_tokens,
         })
+    }
+
+    // pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
+    // pub core_state: NumericCoreState,
+
+    fn get_initial_cypher(&self) {
+        self.get_cypher_tokens().iter().map(|token: &CypherToken| {
+            // for each token make a digit group, and then pass that into a numericcorestate
+            // states should hold their current digit group, and their numeric value is dynamically derived from it
+            //  or just stored alongside
+            todo!();
+            todo!();
+        });
     }
 
     // main logic

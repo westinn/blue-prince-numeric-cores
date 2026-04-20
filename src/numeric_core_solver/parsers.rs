@@ -14,16 +14,19 @@ pub(crate) struct CypherToken {
     pub(crate) string_value: Result<String, FileParseError>,
     // we either parse a valid number or dont
     // but we also could have previous errors and thus no numeric_value to read from
-    pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
-    pub core_state: NumericCoreState,
+    pub(crate) digit_group: Option<Vec<u32>>,
+    // pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
+    // pub core_state: NumericCoreState,
 }
 
 impl Display for CypherToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "({:?}, {:?}, {:?}, {:?})",
-            self.raw_text, self.string_value, self.numeric_value, self.core_state
+            "({:?}, {:?}, {:?}", //, {:?}, {:?})",
+            self.raw_text,
+            self.string_value,
+            self.digit_group // , self.numeric_value, self.core_state
         )
     }
 }
@@ -105,13 +108,20 @@ fn file_word_to_string(word: &str) -> Result<String, FileParseError> {
     }
 }
 
-// string -> number
-// the result stems from: we could fail to parse as the expected number type
-// TODO: should we parse into u32 here or something more generic since State::new can expect any number?
-//       I think the parser should not care about what we intake, just that it's a number.
-fn string_to_number(word: &str) -> Result<u32, FileParseError> {
+// string -> digit group of u32
+fn string_to_digit_group(word: &str) -> Vec<u32> {
     word.chars()
-        .map(|c| ((c.to_ascii_lowercase() as u32) - ('a' as u32) + 1).to_string())
+        .map(|c| (c.to_ascii_lowercase() as u32) - ('a' as u32) + 1)
+        .collect_vec()
+}
+
+// // digit group -> single number
+// // the result stems from: we could fail to parse as the expected number type
+// // TODO: should we parse into u32 here or something more generic since State::new can expect any number?
+// //       I think the parser should not care about what we intake, just that it's a number.
+fn digit_group_to_number(dg: &[u32]) -> Result<u32, FileParseError> {
+    dg.iter()
+        .map(|digit| digit.to_string())
         .collect::<String>()
         .parse::<u32>()
         .map_or_else(|e| Err(FileParseError::U32ParseError(e)), |value| Ok(value))
@@ -135,19 +145,28 @@ impl From<&str> for CypherToken {
     fn from(file_word: &str) -> Self {
         let raw_text: String = file_word.to_owned();
         let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
-        let numeric_value: Option<Result<u32, FileParseError>> = match &string_value {
-            Ok(string_value) => Some(string_to_number(string_value)),
+
+        let digit_group: Option<Vec<u32>> = match &string_value {
+            Ok(string_value) => Some(string_to_digit_group(string_value)),
             Err(_) => None,
         };
-        let core_state: NumericCoreState = match &numeric_value {
-            Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
-            Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
-        };
+
+        // let numeric_value: Option<Result<u32, FileParseError>> = match &digit_group {
+        //     Some(digit_group) => Some(digit_group_to_number(digit_group)),
+        //     None => None,
+        // };
+
+        // let core_state: NumericCoreState = match &numeric_value {
+        //     Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
+        //     Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
+        // };
+
         CypherToken {
             raw_text,
             string_value,
-            numeric_value,
-            core_state,
+            digit_group,
+            // numeric_value,
+            // core_state,
         }
     }
 }

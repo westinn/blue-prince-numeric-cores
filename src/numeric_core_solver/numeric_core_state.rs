@@ -7,8 +7,9 @@ pub mod states {
     use itertools::Itertools;
     use num_traits::{FromPrimitive, Num, ToPrimitive};
     use std::{
-        fmt::{Debug, Display},
+        fmt::{Debug, Display, Error},
         iter::zip,
+        num::ParseIntError,
         ops::Rem,
     };
 
@@ -51,7 +52,7 @@ pub mod states {
     // struct _NoValidNumericCore;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct TooManyPossibleValues;
+    pub struct TooManyPossibleValuesError;
 
     // not sure if we use this anyway to be honest
     impl<T> From<T> for NumericCoreState
@@ -93,7 +94,7 @@ pub mod states {
 
         pub(crate) fn get_numeric_core(
             mut self,
-        ) -> Result<Option<NumericCoreValue>, TooManyPossibleValues> {
+        ) -> Result<Option<NumericCoreValue>, TooManyPossibleValuesError> {
             /*
             // philosophically, I think it makes more sense for a single variant of a State to process/consume only it's own state
             //   and then the greater enum to handle how, as a whole, these States should behave
@@ -112,6 +113,18 @@ pub mod states {
                     }
                 }
             }
+        }
+
+        // digit group -> single number
+        // the result stems from: we could fail to parse as the expected number type
+        // TODO: should we parse into u32 here or something more generic since State::new can expect any number?
+        //       I think the parser should not care about what we intake, just that it's a number.
+        fn digit_group_to_number(dg: &[u32]) -> Result<u32, ParseIntError> {
+            let test: Result<u32, ParseIntError> = dg
+                .iter()
+                .map(|digit| digit.to_string())
+                .collect::<String>()
+                .parse::<u32>();
         }
     }
 
@@ -134,7 +147,7 @@ pub mod states {
             self.0
         }
 
-        fn process_value(self) -> Result<NumericCoreState, TooManyPossibleValues> {
+        fn process_value(self) -> Result<NumericCoreState, TooManyPossibleValuesError> {
             // get current value and digit groups
             let digit_groups: Vec<[u32; 4]> = self.value_to_digit_groups();
             let binary_op_combos = &OP_COMBOS;
@@ -212,13 +225,14 @@ pub mod states {
                         recovered_iter.len(),
                         recovered_iter
                     );
-                    Err(TooManyPossibleValues)
+                    Err(TooManyPossibleValuesError)
                 }
             }
         }
 
         fn value_to_digit_groups(&self) -> Vec<[u32; 4]> {
             // its a u32 initially so len() is ok
+            // @TODO: I think the first parsed instance of a token is not to be combined!
             let digits_as_string: String = self.get_value().to_string();
 
             // we need 4 groups to calculate numeric cores
