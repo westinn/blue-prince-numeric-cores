@@ -3,6 +3,7 @@ use std::fmt::{Debug, Display};
 mod numeric_core_state;
 mod parsers;
 
+use itertools::Itertools;
 use numeric_core_state::states::*;
 use parsers::{CypherToken, FileParseError};
 
@@ -25,8 +26,10 @@ for each NumericCoreIteration,
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
     cypher_tokens: Vec<CypherToken>,
-    cypher: Vec<NumericCoreState>,
+    // cypher: Vec<NumericCoreState>,
 }
+// pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
+// pub core_state: NumericCoreState,
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, FileParseError> {
@@ -42,17 +45,19 @@ impl NumericCoreSolver {
         })
     }
 
-    // pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
-    // pub core_state: NumericCoreState,
-
     fn get_initial_cypher(&self) {
-        self.get_cypher_tokens().iter().map(|token: &CypherToken| {
-            // for each token make a digit group, and then pass that into a numericcorestate
-            // states should hold their current digit group, and their numeric value is dynamically derived from it
-            //  or just stored alongside
-            todo!();
-            todo!();
-        });
+        let tokens: &[CypherToken] = self.get_cypher_tokens();
+        let digit_groups: Vec<Option<DigitGroup>> = tokens
+            .iter()
+            .map(|token: &CypherToken| -> Option<DigitGroup> {
+                token
+                    .initial_digit_group
+                    .as_ref()
+                    .and_then(|values| DigitGroup::new(values).ok())
+            })
+            .collect_vec();
+
+        digit_groups.iter().map(|digit_group| {});
     }
 
     // main logic

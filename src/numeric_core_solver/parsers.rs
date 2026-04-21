@@ -1,6 +1,47 @@
-use super::numeric_core_state::states::NumericCoreState;
 use itertools::Itertools;
 use std::{fmt::Display, fs, io, num};
+
+/*
+==========================================
+Basic parser to Solver logical order:
+
+=====================
+=> Parser
+- file contents read as 1 String
+    - file contents split into individual Strings, aka raw_text
+    - each String is parsed into valid words, aka string_value
+    - each valid word is parsed as individual numbers per letter, aka an initial_digit_group
+- those 3 are packaged into a single CypherToken
+
+=====================
+notes:
+- each CypherToken's initial_digit_group has to be processed as is
+    - normally a State's takes in a single "value: u32"
+    - State figures out what variant of State that number is
+    - if Processable, that number is then split into MANY digit groups
+    - and each digit group then gets processed, and returns a possible State
+
+// possibilities?
+- I could add in a new NumericCoreState variant that is an InitialDG to process
+    - but that would need refactors elsewhere to create proper matches? I think?
+- I could rewrite NumericCoreState to take in a Digit Group
+    - but that doesn't match the intent since a State's value then splits up.
+    - but it does match the flow of data.
+        - we have digit groups, make a State that holds a digit group, and can process it as a number
+        - but if we have digit groups, how do we pass it fractional values and check if that's a valid entry?
+        - I don't think we can, so I think the Digit Group part lives in the variant
+- I could write a new Object that is a single Digit Group that can do it's own processing
+    - but then I'm not reusing a lot of the code elsewhere
+    - but maybe I write it and then see what is actuall reuse and what is "new"
+
+=====================
+=> Solver
+- each CypherToken's initial_digit_group must be
+    - NumericCoreState::new() takes in a Digit Group and sets the current state
+    - but each State also needs to hold the DG that created itself, so it knows how to process it's current iteration
+
+==========================================
+*/
 
 // ===============================================
 // Types
@@ -14,19 +55,15 @@ pub(crate) struct CypherToken {
     pub(crate) string_value: Result<String, FileParseError>,
     // we either parse a valid number or dont
     // but we also could have previous errors and thus no numeric_value to read from
-    pub(crate) digit_group: Option<Vec<u32>>,
-    // pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
-    // pub core_state: NumericCoreState,
+    pub(crate) initial_digit_group: Option<Vec<u32>>,
 }
 
 impl Display for CypherToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "({:?}, {:?}, {:?}", //, {:?}, {:?})",
-            self.raw_text,
-            self.string_value,
-            self.digit_group // , self.numeric_value, self.core_state
+            "({:?}, {:?}, {:?}",
+            self.raw_text, self.string_value, self.initial_digit_group
         )
     }
 }
@@ -97,14 +134,14 @@ pub(crate) fn compute_cypher_structure(
 
 // file word -> valid string
 fn file_word_to_string(word: &str) -> Result<String, FileParseError> {
-    match word.chars().any(|c: char| !c.is_ascii_alphabetic()) {
-        true => {
+    match word.chars().all(|c: char| c.is_ascii_alphabetic()) {
+        true => Ok(word.to_owned()),
+        false => {
             let err_message =
                 format!("Unable to parse word in file into valid ascii string: {word}.");
             eprintln!("{}", err_message);
             Err(FileParseError::NonAsciiWord(err_message.to_owned()))
         }
-        false => Ok(word.to_owned()),
     }
 }
 
@@ -113,18 +150,6 @@ fn string_to_digit_group(word: &str) -> Vec<u32> {
     word.chars()
         .map(|c| (c.to_ascii_lowercase() as u32) - ('a' as u32) + 1)
         .collect_vec()
-}
-
-// // digit group -> single number
-// // the result stems from: we could fail to parse as the expected number type
-// // TODO: should we parse into u32 here or something more generic since State::new can expect any number?
-// //       I think the parser should not care about what we intake, just that it's a number.
-fn digit_group_to_number(dg: &[u32]) -> Result<u32, FileParseError> {
-    dg.iter()
-        .map(|digit| digit.to_string())
-        .collect::<String>()
-        .parse::<u32>()
-        .map_or_else(|e| Err(FileParseError::U32ParseError(e)), |value| Ok(value))
 }
 
 // ===============================================
@@ -146,7 +171,7 @@ impl From<&str> for CypherToken {
         let raw_text: String = file_word.to_owned();
         let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
 
-        let digit_group: Option<Vec<u32>> = match &string_value {
+        let initial_digit_group: Option<Vec<u32>> = match &string_value {
             Ok(string_value) => Some(string_to_digit_group(string_value)),
             Err(_) => None,
         };
@@ -164,7 +189,7 @@ impl From<&str> for CypherToken {
         CypherToken {
             raw_text,
             string_value,
-            digit_group,
+            initial_digit_group,
             // numeric_value,
             // core_state,
         }
