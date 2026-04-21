@@ -57,6 +57,7 @@ impl NumericCoreSolver {
             })
             .collect_vec();
 
+        // @TODO: finish the conversion here! how do we process the initial digit groups into States that handle themselves?
         digit_groups.iter().map(|digit_group| {});
     }
 
