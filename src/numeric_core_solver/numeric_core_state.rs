@@ -7,12 +7,14 @@ pub mod states {
     use itertools::Itertools;
     use num_traits::{FromPrimitive, Num, ToPrimitive};
     use std::{
-        array::IntoIter,
+        array::{IntoIter, from_fn},
         fmt::{Debug, Display},
         iter::zip,
         num::ParseIntError,
-        ops::{Deref, DerefMut, Rem},
+        ops::Rem,
     };
+
+    use crate::numeric_core_solver::parsers::CypherToken;
 
     mod binary_ops;
 
@@ -69,21 +71,79 @@ pub mod states {
     // Implementations
     // ===============================================
 
-    // Vec<u32> -> DigitGroup
-    impl TryFrom<Vec<u32>> for DigitGroup {
-        type Error = InvalidStateError;
+    // old location
+    // pub(crate) fn cypher_tokens_to_digit_groups(
 
-        fn try_from(value: Vec<u32>) -> Result<Self, Self::Error> {
-            DigitGroup::new(&value)
+    pub(crate) fn digit_groups_to_numeric_core_states_cypher(
+        digit_groups: &[Option<DigitGroup>],
+    ) -> Vec<Option<NumericCoreState>> {
+        digit_groups
+            .iter()
+            .map(
+                |op_digit_group: &Option<DigitGroup>| -> Option<NumericCoreState> {
+                    /*
+                    for every digit_group:
+                        process an iteration of calculation using that digit group
+                        the output should be a number
+                        use that new number to create a NumericCoreState
+                        process that State until you get a single final number
+                     */
+                    // @TODO: do we want to keep these errors? potentially a logic flaw if it pops up, but it could also be bad input.
+                    //        I think we want to keep them, since we've kept all broken inputs as various types so far
+                    op_digit_group.as_ref().and_then(|dg| dg.try_into().ok())
+                },
+            )
+            .collect()
+    }
+
+    impl TryFrom<&DigitGroup> for NumericCoreState {
+        type Error = TooManyPossibleValuesError;
+
+        fn try_from(value: &DigitGroup) -> Result<Self, Self::Error> {
+            value.process_digit_group()
         }
     }
 
-    // DigitGroup -> combined digits to u32 value
+    // basically convenience wrapper for the TryFrom below:
+    // does this: `slice of [u32] -> DigitGroup`
+    impl TryFrom<&CypherToken> for DigitGroup {
+        type Error = InvalidStateError;
+
+        fn try_from(token: &CypherToken) -> Result<Self, Self::Error> {
+            match token.get_initial_digit_values() {
+                Some(initial_digit_values) => initial_digit_values.try_into(),
+                None => {
+                    let msg = format!("No digit group values in cypher token: {token}");
+                    eprintln!("{}", msg);
+                    Err(InvalidStateError(msg))
+                }
+            }
+        }
+    }
+
+    // any slice of [u32] -> DigitGroup
+    impl TryFrom<&[u32]> for DigitGroup {
+        type Error = InvalidStateError;
+
+        fn try_from(value: &[u32]) -> Result<Self, Self::Error> {
+            DigitGroup::new(value)
+        }
+    }
+
+    // DigitGroup -> combined digits to single u32 value
+    // result because: we could fail to parse as the expected number type: u32
+    // TODO: should we parse into u32 here or something more generic since State::new can expect any number?
+    //       I think the parser should not care about what we intake, just that it's a number. But what does it output?
     impl TryFrom<DigitGroup> for u32 {
         type Error = ParseIntError;
 
         fn try_from(digit_group: DigitGroup) -> Result<Self, Self::Error> {
-            digit_group.digit_group_to_number()
+            digit_group
+                .0
+                .iter()
+                .map(|digit| digit.to_string())
+                .collect::<String>()
+                .parse::<u32>()
         }
     }
 
@@ -110,16 +170,83 @@ pub mod states {
             )
         }
 
-        // digit group -> single number
-        // the result stems from: we could fail to parse as the expected number type
-        // TODO: should we parse into u32 here or something more generic since State::new can expect any number?
-        //       I think the parser should not care about what we intake, just that it's a number.
-        fn digit_group_to_number(&self) -> Result<u32, ParseIntError> {
-            self.0
-                .iter()
-                .map(|digit| digit.to_string())
-                .collect::<String>()
-                .parse::<u32>()
+        pub fn process_digit_group(self) -> Result<NumericCoreState, TooManyPossibleValuesError> {
+            let digit_group_values: [u32; 4] = self.0;
+            // 6 x [ arrays of size 4 ]
+            let binary_op_combos = &OP_COMBOS;
+
+            /*
+            a vec of arrays, each of which has 4 tuples that are combined to act as instructions to calculate numeric core
+            size: of ( # of op_combos * # of digit_groups )
+            notes: filters out any divide by 0s
+            - given the list of digit_groups (4) and the binaryops available (4)
+            - a paired up Vector of (binary_operation to apply to RHS, number to act as RHS)
+            - results in a fold function of (binary_op(accumulator, number))
+            */
+            let op_digit_numeric_core_steps: Vec<[(BinaryOp, u32); NUM_OF_OPS]> = binary_op_combos
+                .into_iter()
+                .filter_map(
+                    |ops: [BinaryOp; NUM_OF_OPS]| -> Option<[(BinaryOp, u32); NUM_OF_OPS]> {
+                        // apparently this is a safer, compiler checked, alternative to zip(), just more manual
+                        let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] =
+                            from_fn(|i| (ops[i], digit_group_values[i]));
+                        (!zipped_op_digit.contains(&(Divide, 0))).then_some(zipped_op_digit)
+                    },
+                )
+                .collect();
+
+            // [(BinaryOp, u32); 4]
+
+            let op_digit_processed_results: Vec<f64> = op_digit_numeric_core_steps
+                .into_iter()
+                .map(
+                    |ops_for_digit_group: [(BinaryOp, u32); NUM_OF_OPS]| -> f64 {
+                        ops_for_digit_group.into_iter().fold(
+                            0.0,
+                            |acc: f64, (curr_op, curr_number): (BinaryOp, u32)| {
+                                let curr_number_as_f64: f64 = f64::from(curr_number);
+                                match curr_op {
+                                    Add => acc + curr_number_as_f64,
+                                    Subtract => acc - curr_number_as_f64,
+                                    Multiply => acc * curr_number_as_f64,
+                                    Divide => acc / curr_number_as_f64,
+                                }
+                            },
+                        )
+                    },
+                )
+                .collect();
+
+            dbg!(
+                &op_digit_processed_results
+                    .iter()
+                    .filter(|x| x.is_sign_positive() && x.rem(1.0) == 0.0)
+                    .collect_vec()
+            );
+
+            // this is the reduction of the many numeric_results into NumericCoreStates
+            // at this point, we have many potential State objects (of all kinds)
+            // due to how numeric cores work, this SHOULD result in a single number after filtering for valid ones (NumericCore and Processable)
+            // perhaps using an assert is valid here, givan that otherwise, this whole thing is wrong.
+            let state_results: Vec<NumericCoreState> = op_digit_processed_results
+                .into_iter()
+                .map(|float_result| NumericCoreState::new(Some(float_result)))
+                .filter(|&curr_state| !matches!(curr_state, NumericCoreState::Invalid))
+                .collect();
+
+            // can return 1 value, No value, or an Error of MANY values
+            match state_results.into_iter().at_most_one() {
+                Ok(Some(state)) => Ok(state),
+                Ok(None) => Ok(NumericCoreState::Invalid),
+                Err(recovered_iter) => {
+                    eprintln!(
+                        "std::ExactlyOneError: There should only be a single value after processing a ProcessableState item but found: {}.\nData: {:?}",
+                        recovered_iter.len(),
+                        recovered_iter
+                    );
+                    Err(TooManyPossibleValuesError)
+                }
+            }
         }
     }
 
@@ -329,7 +456,7 @@ pub mod states {
             (0..digits_as_string.len() - 1)
                 .array_combinations::<SPLIT_INDEXES_NEEDED>()
                 .map(|[a, b, c]| {
-                    DigitGroup::new(vec![
+                    DigitGroup::new(&[
                         digits_as_string[..=a].parse::<u32>().unwrap(),
                         digits_as_string[a + 1..=b].parse::<u32>().unwrap(),
                         digits_as_string[b + 1..=c].parse::<u32>().unwrap(),

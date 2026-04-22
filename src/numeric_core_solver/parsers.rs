@@ -55,7 +55,15 @@ pub(crate) struct CypherToken {
     pub(crate) string_value: Result<String, FileParseError>,
     // we either parse a valid number or dont
     // but we also could have previous errors and thus no numeric_value to read from
-    pub(crate) initial_digit_group: Option<Vec<u32>>,
+    pub(crate) initial_digit_values: Option<Vec<u32>>,
+}
+
+impl CypherToken {
+    // TODO: could flatten these types of values so None === []
+    //       though the representation of never being able to SET digits in the first place might be helpful
+    pub(crate) fn get_initial_digit_values(&self) -> Option<&[u32]> {
+        self.initial_digit_values.as_deref()
+    }
 }
 
 impl Display for CypherToken {
@@ -63,7 +71,7 @@ impl Display for CypherToken {
         write!(
             f,
             "({:?}, {:?}, {:?}",
-            self.raw_text, self.string_value, self.initial_digit_group
+            self.raw_text, self.string_value, self.initial_digit_values
         )
     }
 }
@@ -189,7 +197,7 @@ impl From<&str> for CypherToken {
         CypherToken {
             raw_text,
             string_value,
-            initial_digit_group,
+            initial_digit_values: initial_digit_group,
             // numeric_value,
             // core_state,
         }

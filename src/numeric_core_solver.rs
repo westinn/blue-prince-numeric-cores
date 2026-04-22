@@ -7,6 +7,8 @@ use itertools::Itertools;
 use numeric_core_state::states::*;
 use parsers::{CypherToken, FileParseError};
 
+use crate::numeric_core_solver::numeric_core_state::states;
+
 /*
 take cypher as matrix of strings
 convert to numbers
@@ -26,39 +28,43 @@ for each NumericCoreIteration,
 pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
     cypher_tokens: Vec<CypherToken>,
-    // cypher: Vec<NumericCoreState>,
+    digit_groups: Vec<Option<DigitGroup>>,
+    cypher: Vec<NumericCoreState>,
 }
 // pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
 // pub core_state: NumericCoreState,
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, FileParseError> {
-        // get cypher structure
         let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(cypher_file_path)?;
-        // get cypher tokens
+
         let cypher_tokens: Vec<CypherToken> =
             parsers::file_path_to_cypher_tokens(cypher_file_path)?;
+
+        let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
+            .iter()
+            .map(|token: &CypherToken| -> Option<DigitGroup> { token.try_into().ok() })
+            .collect();
+
+        let numeric_core_states_cypher = digit_groups
+            .iter()
+            .map(|op_dg: &Option<DigitGroup>| -> NumericCoreState {
+                // TODO?: need to keep every error but turn it into Invalid state
+                let test = op_dg
+                    .as_ref()
+                    .map(|op_dg: &Option<DigitGroup>| match op_dg {
+                        Some(dg) => NumericCoreState::try_from(dg),
+                        None => NumericCoreState::new(None),
+                    });
+            })
+            .collect_vec();
 
         Ok(NumericCoreSolver {
             cypher_structure,
             cypher_tokens,
+            digit_groups,
+            cypher: numeric_core_states_cypher,
         })
-    }
-
-    fn get_initial_cypher(&self) {
-        let tokens: &[CypherToken] = self.get_cypher_tokens();
-        let digit_groups: Vec<Option<DigitGroup>> = tokens
-            .iter()
-            .map(|token: &CypherToken| -> Option<DigitGroup> {
-                token
-                    .initial_digit_group
-                    .as_ref()
-                    .and_then(|values| DigitGroup::new(values).ok())
-            })
-            .collect_vec();
-
-        // @TODO: finish the conversion here! how do we process the initial digit groups into States that handle themselves?
-        digit_groups.iter().map(|digit_group| {});
     }
 
     // main logic
