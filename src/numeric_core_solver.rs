@@ -7,8 +7,6 @@ use itertools::Itertools;
 use numeric_core_state::states::*;
 use parsers::{CypherToken, FileParseError};
 
-use crate::numeric_core_solver::numeric_core_state::states;
-
 /*
 take cypher as matrix of strings
 convert to numbers
@@ -29,10 +27,8 @@ pub struct NumericCoreSolver {
     cypher_structure: (usize, usize),
     cypher_tokens: Vec<CypherToken>,
     digit_groups: Vec<Option<DigitGroup>>,
-    cypher: Vec<NumericCoreState>,
+    cypher: Vec<Option<NumericCoreValue>>,
 }
-// pub(crate) numeric_value: Option<Result<u32, FileParseError>>,
-// pub core_state: NumericCoreState,
 
 impl NumericCoreSolver {
     pub fn new(cypher_file_path: &str) -> Result<Self, FileParseError> {
@@ -46,43 +42,23 @@ impl NumericCoreSolver {
             .map(|token: &CypherToken| -> Option<DigitGroup> { token.try_into().ok() })
             .collect();
 
-        let numeric_core_states_cypher = digit_groups
+        let cypher: Vec<Option<NumericCoreValue>> = digit_groups
             .iter()
-            .map(|op_dg: &Option<DigitGroup>| -> NumericCoreState {
-                // TODO?: need to keep every error but turn it into Invalid state
-                let test = op_dg
-                    .as_ref()
-                    .map(|op_dg: &Option<DigitGroup>| match op_dg {
-                        Some(dg) => NumericCoreState::try_from(dg),
-                        None => NumericCoreState::new(None),
-                    });
-            })
+            .map(
+                |op_digit_group: &Option<DigitGroup>| -> Option<NumericCoreValue> {
+                    op_digit_group
+                        .as_ref()
+                        .and_then(|dg: &DigitGroup| dg.into())
+                },
+            )
             .collect_vec();
 
         Ok(NumericCoreSolver {
             cypher_structure,
             cypher_tokens,
             digit_groups,
-            cypher: numeric_core_states_cypher,
+            cypher,
         })
-    }
-
-    // main logic
-    pub fn solve_cypher(&self) -> Vec<Option<NumericCoreValue>> {
-        self.get_cypher_tokens()
-            .iter()
-            .map(|cypher_token: &CypherToken| -> Option<NumericCoreValue> {
-                //    Result<Option<NumericCoreValue>, TooManyPossibleValues>
-                match cypher_token.core_state.get_numeric_core() {
-                    Ok(result_value) => result_value,
-                    Err(e) => {
-                        // @TODO: this shouldn't happen so do we panic or just return no value for this token?
-                        eprintln!("{:?}", e);
-                        None
-                    }
-                }
-            })
-            .collect()
     }
 
     // getters
@@ -92,6 +68,10 @@ impl NumericCoreSolver {
 
     pub(crate) fn get_cypher_tokens(&self) -> &[CypherToken] {
         &self.cypher_tokens
+    }
+
+    pub(crate) fn get_cypher(&self) -> &[Option<NumericCoreValue>] {
+        &self.cypher
     }
 }
 
