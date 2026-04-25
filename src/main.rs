@@ -15,6 +15,17 @@ fn debug() {
     let numeric_core_solver4 =
         NumericCoreSolver::new("./inputs/cypher_singleline_multiword.txt").unwrap();
 
+    // println!("{numeric_core_solver1}");
+    // println!("{numeric_core_solver2}");
+    // println!("{numeric_core_solver3}");
+    // println!("{numeric_core_solver4}");
+
+    let numeric_core_solver5 = NumericCoreSolver::new("./inputs/cypher_broken.txt").unwrap();
+    println!("{numeric_core_solver5}");
+
+    let numeric_core_solver6 = NumericCoreSolver::new("./inputs/cypher_broken2.txt").unwrap();
+    println!("{numeric_core_solver6}");
+
     // let tokens: String = numeric_core_solver.print_cypher_tokens();
     // let dgs: String = numeric_core_solver.print_digit_groups();
     // let cypher_values: String = numeric_core_solver.print_cypher_values();
@@ -24,9 +35,4 @@ fn debug() {
     // println!("{}", dgs);
     // println!("{}", cypher_values);
     // println!("{}", cypher_alpha);
-
-    println!("{numeric_core_solver1}");
-    println!("{numeric_core_solver2}");
-    println!("{numeric_core_solver3}");
-    println!("{numeric_core_solver4}");
 }

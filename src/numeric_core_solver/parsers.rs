@@ -121,15 +121,16 @@ pub(crate) fn compute_cypher_structure(
 ) -> Result<(usize, usize), FileParseError> {
     let file_contents: String = read_file_contents(cypher_file_path)?;
 
-    let y_cypher_rows = file_contents.lines().count(); // 2
-    let x_cypher_longest_row = file_contents // 3
-            .lines()
-            .max_by_key(|line| line.split_ascii_whitespace().count())
-            .ok_or(FileParseError::RowParseError("Could not find longest row in cypher. Error occurred during initial cypher structure parsing.".to_owned()))?
-            .split_ascii_whitespace()
-            .count();
-    // (x, y)
-    Ok((x_cypher_longest_row, y_cypher_rows))
+    let y_cypher_rows = file_contents.lines().count();
+    let x_cypher_columns = file_contents
+        .lines()
+        .map(|line| line.split_ascii_whitespace().count())
+        .max()
+        .unwrap_or(0);
+    // .ok_or(FileParseError::RowParseError("Could not find longest row in cypher. Error occurred during initial cypher structure parsing.".to_owned()))?;
+
+    let xy = (x_cypher_columns, y_cypher_rows);
+    Ok(xy)
 }
 
 // ===============================================
@@ -179,27 +180,15 @@ impl From<&str> for CypherToken {
         let raw_text: String = file_word.to_owned();
         let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
 
-        let initial_digit_group: Option<Vec<u32>> = match &string_value {
+        let initial_digit_values: Option<Vec<u32>> = match &string_value {
             Ok(string_value) => Some(string_to_digit_group(string_value)),
             Err(_) => None,
         };
 
-        // let numeric_value: Option<Result<u32, FileParseError>> = match &digit_group {
-        //     Some(digit_group) => Some(digit_group_to_number(digit_group)),
-        //     None => None,
-        // };
-
-        // let core_state: NumericCoreState = match &numeric_value {
-        //     Some(Ok(u32_value)) => NumericCoreState::new(Some(*u32_value)),
-        //     Some(Err(_)) | None => NumericCoreState::new(None::<u32>),
-        // };
-
         CypherToken {
             raw_text,
             string_value,
-            initial_digit_values: initial_digit_group,
-            // numeric_value,
-            // core_state,
+            initial_digit_values,
         }
     }
 }

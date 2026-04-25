@@ -98,10 +98,10 @@ impl NumericCoreSolver {
     where
         F: Fn(&T) -> String,
     {
-        let (_rows, columns) = self.get_cypher_structure();
+        let (xsize, _) = self.get_cypher_structure();
         let mut result_string = String::new();
 
-        for row in data.chunks(columns) {
+        for row in data.chunks(xsize) {
             for item in row {
                 result_string.push_str(&format!("{} ", formatter(item)));
             }
