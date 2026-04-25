@@ -156,7 +156,7 @@ fn file_word_to_string(word: &str) -> Result<String, FileParseError> {
 // string -> digit group of u32
 fn string_to_digit_group(word: &str) -> Vec<u32> {
     word.chars()
-        .map(|c| (c.to_ascii_lowercase() as u32) - ('a' as u32) + 1)
+        .map(|c| (c.to_ascii_uppercase() as u32) - ('A' as u32) + 1)
         .collect_vec()
 }
 

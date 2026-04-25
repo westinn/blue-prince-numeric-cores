@@ -10,7 +10,6 @@ pub mod states {
         array::{IntoIter, from_fn},
         fmt::{Debug, Display},
         num::ParseIntError,
-        ops::Rem,
     };
 
     use crate::numeric_core_solver::parsers::CypherToken;
