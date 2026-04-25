@@ -1,5 +1,7 @@
 mod numeric_core_solver;
 
+use core::num;
+
 use numeric_core_solver::NumericCoreSolver;
 
 fn main() {
@@ -20,9 +22,11 @@ fn debug() {
     // println!("\n{numeric_cypher:?}");
     // println!("\n{state_cypher:?}");
 
-    let result_numeric_core_values = numeric_core_solver.solve_cypher();
+    let tokens: String = numeric_core_solver.print_cypher_tokens();
+    let dgs: String = numeric_core_solver.print_digit_groups();
+    let cypher: String = numeric_core_solver.print_cypher();
 
-    for value in result_numeric_core_values {
-        dbg!(value);
-    }
+    println!("{}", tokens);
+    println!("{}", dgs);
+    println!("{}", cypher);
 }

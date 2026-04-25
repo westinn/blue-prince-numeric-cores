@@ -151,7 +151,6 @@ pub mod states {
             )
         }
 
-        //pub fn process_digit_group(self) -> Result<NumericCoreState, TooManyPossibleValuesError> {
         pub fn process_digit_group(self) -> Option<NumericCoreValue> {
             let digit_group_values: [u32; 4] = self.0;
             // 6 x [ arrays of size 4 ]
@@ -165,9 +164,10 @@ pub mod states {
             - a paired up Vector of (binary_operation to apply to RHS, number to act as RHS)
             - results in a fold function of (binary_op(accumulator, number))
             */
-            let op_digit_numeric_core_steps: Vec<[(BinaryOp, u32); NUM_OF_OPS]> = binary_op_combos
+            binary_op_combos
                 .into_iter()
                 .filter_map(
+                    // zip up all operations and the digits they will apply to
                     |ops: [BinaryOp; NUM_OF_OPS]| -> Option<[(BinaryOp, u32); NUM_OF_OPS]> {
                         // apparently this is a safer, compiler checked, alternative to zip(), just more manual
                         let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] =
@@ -175,38 +175,31 @@ pub mod states {
                         (!zipped_op_digit.contains(&(Divide, 0))).then_some(zipped_op_digit)
                     },
                 )
-                .collect();
-
-            let op_digit_processed_results: Vec<f64> =
-                op_digit_numeric_core_steps.into_iter().collect();
-
-            dbg!(
-                &op_digit_processed_results
-                    .iter()
-                    .filter(|x| x.is_sign_positive() && x.rem(1.0) == 0.0)
-                    .collect_vec()
-            );
-
-            // this is the reduction of the many numeric_results into NumericCoreStates
-            // at this point, we have many potential State objects (of all kinds)
-            let valid_states: Vec<NumericCoreState> = op_digit_processed_results
-                .into_iter()
-                .filter_map(
-                    |float_result: f64| match NumericCoreState::new(Some(float_result)) {
-                        NumericCoreState::Invalid => None,
-                        valid_state => Some(valid_state),
+                .map(
+                    // use fold to apply the (operation, digit) tuple in order
+                    |ops_for_digit_group: [(BinaryOp, u32); NUM_OF_OPS]| -> f64 {
+                        ops_for_digit_group.into_iter().fold(
+                            0.0,
+                            |acc: f64, (curr_op, curr_number): (BinaryOp, u32)| {
+                                let curr_number_as_f64: f64 = f64::from(curr_number);
+                                match curr_op {
+                                    Add => acc + curr_number_as_f64,
+                                    Subtract => acc - curr_number_as_f64,
+                                    Multiply => acc * curr_number_as_f64,
+                                    Divide => acc / curr_number_as_f64,
+                                }
+                            },
+                        )
                     },
                 )
-                .collect_vec();
-
-            // @TODO need to figure out what a single digit group should return VS a processable value should
-            //       currently we need it to return a state so the loop can continue during the solve.
-            let core_value: Option<NumericCoreValue> = valid_states
-                .into_iter()
-                .filter_map(|v| v.get_numeric_core())
-                .min();
-
-            core_value
+                .filter_map(
+                    // use that final number to create a new NumericCoreState and get the final core value
+                    |float_result: f64| match NumericCoreState::new(Some(float_result)) {
+                        NumericCoreState::Invalid => None,
+                        valid_state => valid_state.get_numeric_core(),
+                    },
+                )
+                .min()
         }
     }
 

@@ -1,4 +1,7 @@
-use std::fmt::{Debug, Display};
+use std::{
+    collections::btree_map::Values,
+    fmt::{Debug, Display, format},
+};
 
 mod numeric_core_state;
 mod parsers;
@@ -70,29 +73,60 @@ impl NumericCoreSolver {
         &self.cypher_tokens
     }
 
+    pub(crate) fn get_digit_groups(&self) -> &[Option<DigitGroup>] {
+        &self.digit_groups
+    }
+
     pub(crate) fn get_cypher(&self) -> &[Option<NumericCoreValue>] {
         &self.cypher
+    }
+
+    fn print_data<T, F>(&self, data: &[T], formatter: F) -> String
+    where
+        F: Fn(&T) -> String,
+    {
+        let (_rows, columns) = self.get_cypher_structure();
+        let mut result_string = String::new();
+
+        for row in data.chunks(columns) {
+            for item in row {
+                result_string.push_str(&format!("{} ", formatter(item)));
+            }
+            result_string.push_str("\n");
+        }
+        result_string
+    }
+
+    pub(crate) fn print_cypher_tokens(&self) -> String {
+        self.print_data(self.get_cypher_tokens(), |token: &CypherToken| -> String {
+            format!("{token:?}")
+        })
+    }
+
+    pub(crate) fn print_digit_groups(&self) -> String {
+        self.print_data(
+            self.get_digit_groups(),
+            |dg: &Option<DigitGroup>| match dg.as_ref() {
+                Some(values) => format!("{values:?}"),
+                None => "None".to_owned(),
+            },
+        )
+    }
+
+    pub(crate) fn print_cypher(&self) -> String {
+        self.print_data(
+            self.get_cypher(),
+            |cypher: &Option<NumericCoreValue>| match cypher.as_ref() {
+                Some(values) => format!("{values:?}"),
+                None => "None".to_owned(),
+            },
+        )
     }
 }
 
 impl Display for NumericCoreSolver {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let (rows, columns) = self.get_cypher_structure();
-        let tokens = self.get_cypher_tokens();
-
-        let mut result_string = String::new();
-
-        (0..rows).for_each(|row| {
-            (0..columns).for_each(|col| {
-                let current_token: Option<&CypherToken> = tokens.get((row * col) + col);
-                result_string.push_str(&current_token.map_or_else(
-                    || "None".to_owned(),
-                    |token: &CypherToken| format!("{}", token),
-                ));
-            })
-        });
-
-        write!(f, "{}", result_string)
+        write!(f, "{}", self.print_cypher())
     }
 }
 
