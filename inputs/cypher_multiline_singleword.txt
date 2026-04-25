@@ -1,4 +1,5 @@
-pigs1
-pigs2
-pigs3
-pigs4
+pigs
+clam
+toad
+tree
+hand

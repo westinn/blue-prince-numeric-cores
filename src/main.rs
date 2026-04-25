@@ -7,8 +7,13 @@ fn main() {
 }
 
 fn debug() {
-    let numeric_core_solver: NumericCoreSolver =
+    let numeric_core_solver1 = NumericCoreSolver::new("./inputs/cypher.txt").unwrap();
+    let numeric_core_solver2 =
+        NumericCoreSolver::new("./inputs/cypher_multiline_singleword.txt").unwrap();
+    let numeric_core_solver3 =
         NumericCoreSolver::new("./inputs/cypher_singleline_singleword.txt").unwrap();
+    let numeric_core_solver4 =
+        NumericCoreSolver::new("./inputs/cypher_singleline_multiword.txt").unwrap();
 
     // let tokens: String = numeric_core_solver.print_cypher_tokens();
     // let dgs: String = numeric_core_solver.print_digit_groups();
@@ -20,5 +25,8 @@ fn debug() {
     // println!("{}", cypher_values);
     // println!("{}", cypher_alpha);
 
-    println!("{numeric_core_solver}");
+    println!("{numeric_core_solver1}");
+    println!("{numeric_core_solver2}");
+    println!("{numeric_core_solver3}");
+    println!("{numeric_core_solver4}");
 }
