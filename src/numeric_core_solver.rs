@@ -121,7 +121,7 @@ impl NumericCoreSolver {
             self.get_digit_groups(),
             |dg: &Option<DigitGroup>| match dg.as_ref() {
                 Some(values) => format!("{values:?}"),
-                None => "???".to_owned(),
+                None => "None".to_owned(),
             },
         )
     }
@@ -131,7 +131,7 @@ impl NumericCoreSolver {
             self.get_cypher_values(),
             |cypher_value: &Option<NumericCoreValue>| match cypher_value.as_ref() {
                 Some(value) => format!("{value:?}"),
-                None => "???".to_owned(),
+                None => "None".to_owned(),
             },
         )
     }
@@ -141,7 +141,7 @@ impl NumericCoreSolver {
             self.get_cypher_alpha(),
             |cypher_alpha: &Option<char>| match cypher_alpha.as_ref() {
                 Some(value) => format!("{value}"),
-                None => "?".to_owned(),
+                None => "None".to_owned(),
             },
         )
     }

@@ -7,6 +7,7 @@ fn main() {
 }
 
 fn debug() {
+    // Works
     let numeric_core_solver1 = NumericCoreSolver::new("./inputs/cypher.txt").unwrap();
     let numeric_core_solver2 =
         NumericCoreSolver::new("./inputs/cypher_multiline_singleword.txt").unwrap();
@@ -15,15 +16,16 @@ fn debug() {
     let numeric_core_solver4 =
         NumericCoreSolver::new("./inputs/cypher_singleline_multiword.txt").unwrap();
 
-    // println!("{numeric_core_solver1}");
-    // println!("{numeric_core_solver2}");
-    // println!("{numeric_core_solver3}");
-    // println!("{numeric_core_solver4}");
+    println!("{numeric_core_solver1}");
+    println!("{numeric_core_solver2}");
+    println!("{numeric_core_solver3}");
+    println!("{numeric_core_solver4}");
 
+    // Supposed to give some None values
     let numeric_core_solver5 = NumericCoreSolver::new("./inputs/cypher_broken.txt").unwrap();
-    println!("{numeric_core_solver5}");
-
     let numeric_core_solver6 = NumericCoreSolver::new("./inputs/cypher_broken2.txt").unwrap();
+
+    println!("{numeric_core_solver5}");
     println!("{numeric_core_solver6}");
 
     // let tokens: String = numeric_core_solver.print_cypher_tokens();
