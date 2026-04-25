@@ -5,7 +5,7 @@ mod parsers;
 
 use itertools::Itertools;
 use numeric_core_state::states::*;
-use parsers::{CypherToken, FileParseError};
+use parsers::CypherToken;
 
 /*
 take cypher as matrix of strings
@@ -32,11 +32,10 @@ pub struct NumericCoreSolver {
 }
 
 impl NumericCoreSolver {
-    pub fn new(cypher_file_path: &str) -> Result<Self, FileParseError> {
-        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(cypher_file_path)?;
+    pub fn new(input_content: &str) -> Self {
+        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(input_content);
 
-        let cypher_tokens: Vec<CypherToken> =
-            parsers::file_path_to_cypher_tokens(cypher_file_path)?;
+        let cypher_tokens: Vec<CypherToken> = parsers::input_to_cypher_tokens(input_content);
 
         let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
             .iter()
@@ -64,13 +63,13 @@ impl NumericCoreSolver {
             )
             .collect_vec();
 
-        Ok(NumericCoreSolver {
+        NumericCoreSolver {
             cypher_structure,
             cypher_tokens,
             digit_groups,
             cypher_values,
             cypher_alpha,
-        })
+        }
     }
 
     // getters
@@ -167,20 +166,6 @@ impl Display for NumericCoreSolver {
 #[cfg(test)]
 mod tests {
     // use super::*;
-
-    // functions
-    /*
-    NumericCoreState::new
-    NumericCoreValue
-    ProcessableValues
-
-    NumericCoreSolver::new(file_path)
-    ::convert_to_numeric_cypher
-    ::convert_word_to_number
-    ::solve_cypher
-    ::get_initial_cypher
-    ::get_numeric_cypher
-     */
 
     // #[test]
     // fn it_works() {

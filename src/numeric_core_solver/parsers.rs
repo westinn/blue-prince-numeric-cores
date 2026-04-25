@@ -1,47 +1,5 @@
 use itertools::Itertools;
-use std::{fmt::Display, fs, io, num};
-
-/*
-==========================================
-Basic parser to Solver logical order:
-
-=====================
-=> Parser
-- file contents read as 1 String
-    - file contents split into individual Strings, aka raw_text
-    - each String is parsed into valid words, aka string_value
-    - each valid word is parsed as individual numbers per letter, aka an initial_digit_group
-- those 3 are packaged into a single CypherToken
-
-=====================
-notes:
-- each CypherToken's initial_digit_group has to be processed as is
-    - normally a State's takes in a single "value: u32"
-    - State figures out what variant of State that number is
-    - if Processable, that number is then split into MANY digit groups
-    - and each digit group then gets processed, and returns a possible State
-
-// possibilities?
-- I could add in a new NumericCoreState variant that is an InitialDG to process
-    - but that would need refactors elsewhere to create proper matches? I think?
-- I could rewrite NumericCoreState to take in a Digit Group
-    - but that doesn't match the intent since a State's value then splits up.
-    - but it does match the flow of data.
-        - we have digit groups, make a State that holds a digit group, and can process it as a number
-        - but if we have digit groups, how do we pass it fractional values and check if that's a valid entry?
-        - I don't think we can, so I think the Digit Group part lives in the variant
-- I could write a new Object that is a single Digit Group that can do it's own processing
-    - but then I'm not reusing a lot of the code elsewhere
-    - but maybe I write it and then see what is actuall reuse and what is "new"
-
-=====================
-=> Solver
-- each CypherToken's initial_digit_group must be
-    - NumericCoreState::new() takes in a Digit Group and sets the current state
-    - but each State also needs to hold the DG that created itself, so it knows how to process it's current iteration
-
-==========================================
-*/
+use std::{fmt::Display, io, num};
 
 // ===============================================
 // Types
@@ -49,10 +7,10 @@ notes:
 
 #[derive(Debug, Clone)]
 pub(crate) struct CypherToken {
-    // string as input from file
+    // unprocessed input as String
     pub raw_text: String,
     // we either parse a valid string or error
-    pub(crate) string_value: Result<String, FileParseError>,
+    pub(crate) string_value: Result<String, ParseError>,
     // we either parse a valid number or dont
     // but we also could have previous errors and thus no numeric_value to read from
     pub(crate) initial_digit_values: Option<Vec<u32>>,
@@ -79,24 +37,24 @@ impl Display for CypherToken {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 // @TODO: dead code?
-pub enum FileParseError {
+pub enum ParseError {
     // wrap the standard library IO error
     Io(String),
-    InputFileEmptyError(String),
+    InputEmptyError(String),
     NonAsciiWord(String),
     U32ParseError(num::ParseIntError),
     RowParseError(String),
 }
 
-impl From<io::Error> for FileParseError {
+impl From<io::Error> for ParseError {
     fn from(value: io::Error) -> Self {
-        FileParseError::Io(value.to_string())
+        ParseError::Io(value.to_string())
     }
 }
 
-impl From<num::ParseIntError> for FileParseError {
+impl From<num::ParseIntError> for ParseError {
     fn from(value: num::ParseIntError) -> Self {
-        FileParseError::U32ParseError(value)
+        ParseError::U32ParseError(value)
     }
 }
 
@@ -104,33 +62,14 @@ impl From<num::ParseIntError> for FileParseError {
 // Utilities
 // ===============================================
 
-// read file
-fn read_file_contents(cypher_file_path: &str) -> Result<String, FileParseError> {
-    let file_content = fs::read_to_string(cypher_file_path)?.trim().to_owned();
-
-    match file_content.is_empty() {
-        true => Err(FileParseError::InputFileEmptyError(format!(
-            "Input file was empty: {cypher_file_path}"
-        ))),
-        false => Ok(file_content),
-    }
-}
-
-pub(crate) fn compute_cypher_structure(
-    cypher_file_path: &str,
-) -> Result<(usize, usize), FileParseError> {
-    let file_contents: String = read_file_contents(cypher_file_path)?;
-
-    let y_cypher_rows = file_contents.lines().count();
-    let x_cypher_columns = file_contents
+pub(crate) fn compute_cypher_structure(input_content: &str) -> (usize, usize) {
+    let y_cypher_rows = input_content.lines().count();
+    let x_cypher_columns = input_content
         .lines()
         .map(|line| line.split_ascii_whitespace().count())
         .max()
         .unwrap_or(0);
-    // .ok_or(FileParseError::RowParseError("Could not find longest row in cypher. Error occurred during initial cypher structure parsing.".to_owned()))?;
-
-    let xy = (x_cypher_columns, y_cypher_rows);
-    Ok(xy)
+    (x_cypher_columns, y_cypher_rows)
 }
 
 // ===============================================
@@ -141,15 +80,14 @@ pub(crate) fn compute_cypher_structure(
 // Inidividual value parsing
 // ===============================================
 
-// file word -> valid string
-fn file_word_to_string(word: &str) -> Result<String, FileParseError> {
+// word -> valid string
+fn word_to_string(word: &str) -> Result<String, ParseError> {
     match word.chars().all(|c: char| c.is_ascii_alphabetic()) {
         true => Ok(word.to_owned()),
         false => {
-            let err_message =
-                format!("Unable to parse word in file into valid ascii string: {word}.");
+            let err_message = format!("Unable to parse word into valid ascii string: {word}");
             eprintln!("{}", err_message);
-            Err(FileParseError::NonAsciiWord(err_message.to_owned()))
+            Err(ParseError::NonAsciiWord(err_message.to_owned()))
         }
     }
 }
@@ -165,20 +103,18 @@ fn string_to_digit_group(word: &str) -> Vec<u32> {
 // larger orchestrators + related From function
 // ===============================================
 
-pub(crate) fn file_path_to_cypher_tokens(
-    cypher_file_path: &str,
-) -> Result<Vec<CypherToken>, FileParseError> {
-    Ok(read_file_contents(cypher_file_path)?
+pub(crate) fn input_to_cypher_tokens(input_content: &str) -> Vec<CypherToken> {
+    input_content
         .split_ascii_whitespace()
         .map(Into::into)
-        .collect_vec())
+        .collect_vec()
 }
 
-// take a file's pre-parsed word strings, validate thenm, then, convert them to tokens
+// take an input's parsed word strings, validate them, then convert them to tokens
 impl From<&str> for CypherToken {
-    fn from(file_word: &str) -> Self {
-        let raw_text: String = file_word.to_owned();
-        let string_value: Result<String, FileParseError> = file_word_to_string(&raw_text);
+    fn from(word: &str) -> Self {
+        let raw_text: String = word.to_owned();
+        let string_value: Result<String, ParseError> = word_to_string(&raw_text);
 
         let initial_digit_values: Option<Vec<u32>> = match &string_value {
             Ok(string_value) => Some(string_to_digit_group(string_value)),
