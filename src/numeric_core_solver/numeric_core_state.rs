@@ -177,25 +177,8 @@ pub mod states {
                 )
                 .collect();
 
-            let op_digit_processed_results: Vec<f64> = op_digit_numeric_core_steps
-                .into_iter()
-                .map(
-                    |ops_for_digit_group: [(BinaryOp, u32); NUM_OF_OPS]| -> f64 {
-                        ops_for_digit_group.into_iter().fold(
-                            0.0,
-                            |acc: f64, (curr_op, curr_number): (BinaryOp, u32)| {
-                                let curr_number_as_f64: f64 = f64::from(curr_number);
-                                match curr_op {
-                                    Add => acc + curr_number_as_f64,
-                                    Subtract => acc - curr_number_as_f64,
-                                    Multiply => acc * curr_number_as_f64,
-                                    Divide => acc / curr_number_as_f64,
-                                }
-                            },
-                        )
-                    },
-                )
-                .collect();
+            let op_digit_processed_results: Vec<f64> =
+                op_digit_numeric_core_steps.into_iter().collect();
 
             dbg!(
                 &op_digit_processed_results
@@ -222,6 +205,7 @@ pub mod states {
                 .into_iter()
                 .filter_map(|v| v.get_numeric_core())
                 .min();
+
             core_value
         }
     }
@@ -265,17 +249,12 @@ pub mod states {
             }
         }
 
-        pub(crate) fn get_numeric_core(mut self) -> Option<NumericCoreValue> {
-            loop {
-                match self {
-                    NumericCoreState::Invalid => break None,
-                    NumericCoreState::NumericCore(numeric_core_value) => {
-                        break Some(numeric_core_value);
-                    }
-                    NumericCoreState::Processable(processable_value) => {
-                        self = processable_value.process_value();
-                        todo!();
-                    }
+        pub(crate) fn get_numeric_core(self) -> Option<NumericCoreValue> {
+            match self {
+                NumericCoreState::Invalid => None,
+                NumericCoreState::NumericCore(numeric_core_value) => Some(numeric_core_value),
+                NumericCoreState::Processable(processable_value) => {
+                    processable_value.process_value()
                 }
             }
         }
