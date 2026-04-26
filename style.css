@@ -1,0 +1,36 @@
+body {
+  font-family: sans-serif;
+  font-size: x-large;
+
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  margin: auto;
+
+  row-gap: 2em;
+}
+
+#title {
+  margin: 1em auto 0%;
+
+  width: 100%;
+}
+
+.section-header {
+  margin: 0px;
+}
+
+#inputs,
+#outputs {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+
+  gap: 10px 0px;
+}
+
+pre {
+  margin: 1em auto;
+  font-size: xx-large;
+}

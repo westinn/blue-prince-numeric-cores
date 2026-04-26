@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Blue Prince Numeric Core Solver</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+
+  <body id="body">
+    <h1 id="title">Blue Prince Numeric Core Solver</h1>
+    <div id="inputs">
+      <h2 class="section-header">Puzzle Input:</h2>
+      <textarea
+        id="puzzleInput"
+        name="puzzleInput"
+        placeholder="Enter your input here..."
+        rows="8"
+        cols="30"
+        autocapitalize
+        autofocus
+      >
+pigs sand mail date head
+clam peak sand joya well
+toad card will tape legs
+tree road maid slab rock
+hand vase safe clay toes
+      </textarea>
+      <button id="runButton">Solve!</button>
+    </div>
+
+    <div id="outputs">
+      <h2 class="section-header">Cypher Output:</h2>
+      <pre id="output"></pre>
+    </div>
+  </body>
+
+  <script type="module">
+    // Import the wasm-pack generated code
+    import init, { process_input_from_web } from "./pkg/numeric_cores.js";
+    let run = async () => {
+      // Load the WebAssembly engine
+      await init();
+      document.getElementById("runButton").addEventListener("click", () => {
+        // Grab the input from the box
+        const inputText = document.getElementById("puzzleInput").value;
+        // Call Rust function
+        const result = process_input_from_web(inputText);
+        // Print the result
+        document.getElementById("output").innerText = result;
+      });
+    };
+    run();
+  </script>
+</html>
