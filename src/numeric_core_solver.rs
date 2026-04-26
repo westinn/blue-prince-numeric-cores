@@ -33,9 +33,11 @@ pub struct NumericCoreSolver {
 
 impl NumericCoreSolver {
     pub fn new(input_content: &str) -> Self {
-        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(input_content);
+        let trimmed = input_content.trim();
 
-        let cypher_tokens: Vec<CypherToken> = parsers::input_to_cypher_tokens(input_content);
+        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(trimmed);
+
+        let cypher_tokens: Vec<CypherToken> = parsers::input_to_cypher_tokens(trimmed);
 
         let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
             .iter()
