@@ -1,0 +1,14 @@
+[package]
+name = "numeric_cores"
+description = "A solver for Blue Prince's \"Numeric Core\" puzzles."
+repository = "https://github.com/westinn/blue-prince-numeric-cores"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+itertools = "0.14.0"
+num-traits = "0.2.19"
+wasm-bindgen = "0.2.118"
+
+[lib]
+crate-type = ["cdylib", "rlib"]

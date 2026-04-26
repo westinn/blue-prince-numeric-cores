@@ -1,0 +1,5 @@
+pigs
+clam
+toad
+tree
+hand
