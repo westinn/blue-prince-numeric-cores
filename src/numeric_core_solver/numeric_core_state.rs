@@ -12,7 +12,7 @@ pub mod states {
         num::ParseIntError,
     };
 
-    use crate::numeric_core_solver::parsers::CypherToken;
+    use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber};
 
     mod binary_ops;
 
@@ -86,10 +86,10 @@ pub mod states {
 
     // basically convenience wrapper for the TryFrom below:
     // does this: `slice of [u32] -> DigitGroup`
-    impl TryFrom<&CypherToken> for DigitGroup {
+    impl<T: TokenNumber> TryFrom<&CypherToken<T>> for DigitGroup {
         type Error = InvalidStateError;
 
-        fn try_from(token: &CypherToken) -> Result<Self, Self::Error> {
+        fn try_from(token: &CypherToken<T>) -> Result<Self, Self::Error> {
             match token.get_initial_digit_values() {
                 Some(initial_digit_values) => initial_digit_values.try_into(),
                 None => {

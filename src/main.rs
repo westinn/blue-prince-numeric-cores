@@ -2,13 +2,15 @@ mod numeric_core_solver;
 
 use numeric_core_solver::NumericCoreSolver;
 
+use crate::numeric_core_solver::parsers::TokenNumber;
+
 fn main() {
     debug()
 }
 
 fn debug() {
     // Works
-    let numeric_core_solver1 = NumericCoreSolver::new("./inputs/cypher.txt");
+    let numeric_core_solver1: NumericCoreSolver = NumericCoreSolver::new("./inputs/cypher.txt");
     println!("{numeric_core_solver1}");
 
     // let numeric_core_solver2 = NumericCoreSolver::new("./inputs/cypher_multiline_singleword.txt");

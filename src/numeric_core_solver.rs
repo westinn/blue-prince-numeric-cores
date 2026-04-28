@@ -1,11 +1,13 @@
 use std::fmt::{Debug, Display};
 
 mod numeric_core_state;
-mod parsers;
+pub(crate) mod parsers;
 
 use itertools::Itertools;
 use numeric_core_state::states::*;
 use parsers::CypherToken;
+
+use crate::numeric_core_solver::parsers::TokenNumber;
 
 /*
 take cypher as matrix of strings
@@ -23,26 +25,26 @@ for each NumericCoreIteration,
 */
 
 #[derive(Debug, Clone)]
-pub struct NumericCoreSolver {
+pub struct NumericCoreSolver<T> {
     cypher_structure: (usize, usize),
-    cypher_tokens: Vec<CypherToken>,
+    cypher_tokens: Vec<CypherToken<T>>,
     digit_groups: Vec<Option<DigitGroup>>,
     cypher_values: Vec<Option<NumericCoreValue>>,
     cypher_alpha: Vec<Option<char>>,
 }
 
-impl NumericCoreSolver {
+impl<T: TokenNumber> NumericCoreSolver<T> {
     pub fn new(input_content: &str) -> Self {
         let trimmed = input_content.trim();
 
         let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(trimmed);
 
-        let cypher_tokens: Vec<CypherToken> = parsers::input_to_cypher_tokens(trimmed);
+        let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed);
 
         let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
             .iter()
-            .map(|token: &CypherToken| -> Option<DigitGroup> { token.try_into().ok() })
-            .collect();
+            .map(|token: &CypherToken<T>| -> Option<DigitGroup> { token.try_into().ok() })
+            .collect_vec();
 
         let cypher_values: Vec<Option<NumericCoreValue>> = digit_groups
             .iter()
@@ -79,7 +81,7 @@ impl NumericCoreSolver {
         self.cypher_structure
     }
 
-    pub(crate) fn get_cypher_tokens(&self) -> &[CypherToken] {
+    pub(crate) fn get_cypher_tokens(&self) -> &[CypherToken<T>] {
         &self.cypher_tokens
     }
 
@@ -95,9 +97,9 @@ impl NumericCoreSolver {
         &self.cypher_alpha
     }
 
-    fn print_data<T, F>(&self, data: &[T], formatter: F) -> String
+    fn print_data<V, F>(&self, data: &[V], formatter: F) -> String
     where
-        F: Fn(&T) -> String,
+        F: Fn(&V) -> String,
     {
         let (xsize, _) = self.get_cypher_structure();
         let mut result_string = String::new();
@@ -112,9 +114,10 @@ impl NumericCoreSolver {
     }
 
     pub(crate) fn print_cypher_tokens(&self) -> String {
-        self.print_data(self.get_cypher_tokens(), |token: &CypherToken| -> String {
-            format!("{token:?}")
-        })
+        self.print_data(
+            self.get_cypher_tokens(),
+            |token: &CypherToken<T>| -> String { format!("{token:?}") },
+        )
     }
 
     pub(crate) fn print_digit_groups(&self) -> String {
@@ -146,12 +149,9 @@ impl NumericCoreSolver {
             },
         )
     }
-}
 
-impl Display for NumericCoreSolver {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
+    pub fn print_all(&self) -> String {
+        format!(
             "{}",
             "\n".to_string()
                 + &self.print_cypher_tokens()
@@ -162,6 +162,12 @@ impl Display for NumericCoreSolver {
                 + "\n"
                 + &self.print_cypher_alpha()
         )
+    }
+}
+
+impl<T: TokenNumber> Display for NumericCoreSolver<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.print_all())
     }
 }
 

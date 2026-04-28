@@ -11,30 +11,28 @@ use std::{
 // Types
 // ===============================================
 
+pub trait TokenNumber: Num + FromStr + Display + Debug {}
+impl<T> TokenNumber for T where T: Num + FromStr + Display + Debug {}
+
 #[derive(Debug, Clone)]
-enum TokenValue<T>
-where
-    T: Num + FromStr,
-    <T as FromStr>::Err: Debug + Clone,
-{
+enum TokenValue<T> {
     Number(T),
-    RomanNumeral(String),
+    // RomanNumeral(String),
     Word(String),
 }
 
-impl<T> TokenValue<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
-    fn new(raw_text: &str) -> Result<Self, ParseError<T>> {
+impl<T: TokenNumber> TokenValue<T> {
+    fn new(raw_text: &str) -> Result<Self, ParseError> {
         match raw_text {
-            _ if Self::is_number(raw_text) => Ok(Self::Number(
-                raw_text
-                    .parse::<T>()
-                    .map_err(|e| ParseError::FromStrParseError(e))?,
-            )),
-            _ if Self::is_roman_numeral(raw_text) => Ok(Self::RomanNumeral(raw_text.to_owned())),
+            _ if Self::is_number(raw_text) => {
+                Ok(Self::Number(raw_text.parse::<T>().map_err(|_| {
+                    ParseError::FromStrParseError(format!(
+                        "Unable to parse text into number: {}",
+                        raw_text
+                    ))
+                })?))
+            }
+            // _ if Self::is_roman_numeral(raw_text) => Ok(Self::RomanNumeral(raw_text.to_owned())),
             _ if Self::is_word(raw_text) => Ok(Self::Word(raw_text.to_owned())),
             _ => Err(ParseError::InvalidTokenValue(format!(
                 "Unable to parse raw_text into valid input: {raw_text}"
@@ -46,32 +44,34 @@ where
         raw_text.chars().all(|c| c.is_ascii_digit())
     }
 
-    fn is_roman_numeral(raw_text: &str) -> bool {
-        raw_text.chars().all(|c| "IVXLCDM".contains(c))
-    }
+    // fn is_roman_numeral(raw_text: &str) -> bool {
+    //     raw_text.chars().all(|c| "IVXLCDM".contains(c))
+    // }
 
     fn is_word(raw_text: &str) -> bool {
         raw_text.chars().all(|c| c.is_ascii_alphabetic())
     }
 
-    fn to_digit_group_values(&self) -> {
-        match self {
-            TokenValue::Number(number) => todo!(),
-            TokenValue::RomanNumeral(roman_numeral) => Self::string_to_digit_group_values(&roman_numeral),
-            TokenValue::Word(word) => Self::string_to_digit_group_values(&word),
-        }
-    }
+    // @TODO: this needs to get every possible split of the word,
+    //        filter out every set of character combos that contains a non-valid Roman numeral
+    //        and then every valid combo becomes a Token that stacks together in the cypher matrix
+    //        so we have not just a Vec<Tokens>, but an Vec<Vec<Tokens>>
+    //        since we can have Roman numerials that have various potential initial DG values
+    // fn roman_numeral_to_digit_group_values(word: &str) -> Vec<u32> {
+    //     todo!();
+    //     word.chars().map(|c| match c {
+    //         'I' | 'i' => 1,
+    //         'V' | 'v' => 5,
+    //         'X' | 'x' => 10,
+    //         'L' | 'l' => 50,
+    //         'C' | 'c' => 100,
+    //         'D' | 'd' => 500,
+    //         'M' | 'm' => 1000
+    //     }).collect_vec()
+    // }
 
-    fn roman_numeral_to_digit_group_values(word: &str) -> Vec<u32> {       
-        word.chars().map(|c| match c {
-            'I' | 'i' => 1,
-            'V' | 'v' => 5,
-            'X' | 'x' => 10,
-            'L' | 'l' => 50,
-            'C' | 'c' => 100,
-            'D' | 'd' => 500,
-            'M' | 'm' => 1000
-        }).collect_vec()
+    fn number_to_digit_group_values(number: &T) -> Vec<u32> {
+        number.to_string().chars().map(|c| c as u32).collect_vec()
     }
 
     fn string_to_digit_group_values(word: &str) -> Vec<u32> {
@@ -79,107 +79,72 @@ where
             .map(|c| (c.to_ascii_uppercase() as u32) - ('A' as u32) + 1)
             .collect_vec()
     }
-
-    
 }
 
-impl<T> From<&TokenValue<T>> for Option<Vec<u32>>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl<T: TokenNumber> From<&TokenValue<T>> for Vec<u32> {
     fn from(token: &TokenValue<T>) -> Self {
         match token {
-            TokenValue::Number(number) => ,
-            TokenValue::RomanNumeral(roman_numeral) => todo!(),
-            TokenValue::Word(word) => todo!(),
+            TokenValue::Number(number) => TokenValue::number_to_digit_group_values(number),
+            //TokenValue::RomanNumeral(roman_numeral) => todo!(),
+            TokenValue::Word(word) => TokenValue::<T>::string_to_digit_group_values(word),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct CypherToken<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+pub(crate) struct CypherToken<T> {
     // unprocessed input as String
-    pub raw_text: String,
+    raw_text: String,
     // we either parse a valid string or error
-    pub(crate) value: Result<TokenValue<T>, ParseError<T>>,
+    token_value: Result<TokenValue<T>, ParseError>,
     // we either parse a valid number or dont
     // but we also could have previous errors and thus no numeric_value to read from
-    pub(crate) initial_digit_values: Option<Vec<u32>>,
+    digit_values: Option<Vec<u32>>,
 }
 
-impl<T> CypherToken<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl<T: TokenNumber> CypherToken<T> {
     // TODO: could flatten these types of values so None === []
     //       though the representation of never being able to SET digits in the first place might be helpful
     pub(crate) fn get_initial_digit_values(&self) -> Option<&[u32]> {
-        self.initial_digit_values.as_deref()
+        self.digit_values.as_deref()
     }
 }
 
-impl<T> Display for CypherToken<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl<T: TokenNumber> Display for CypherToken<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "({:?}, {:?}, {:?}",
-            self.raw_text, self.value, self.initial_digit_values
+            self.raw_text, self.token_value, self.digit_values
         )
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum ParseError<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
-    // wrap the standard library IO error
+pub enum ParseError {
     Io(String),
-    InputEmptyError(String),
-    NonAsciiWord(String),
     U32ParseError(num::ParseIntError),
     FloatParseError(num::ParseFloatError),
-    FromStrParseError(<T as FromStr>::Err),
-    RowParseError(String),
+    FromStrParseError(String),
     InvalidTokenValue(String),
+    _InputEmptyError(String),
+    _RowParseError(String),
+    _NonAsciiWord(String),
 }
 
-impl<T> From<io::Error> for ParseError<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl From<io::Error> for ParseError {
     fn from(value: io::Error) -> Self {
         ParseError::Io(value.to_string())
     }
 }
 
-impl<T> From<num::ParseIntError> for ParseError<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl From<num::ParseIntError> for ParseError {
     fn from(value: num::ParseIntError) -> Self {
         ParseError::U32ParseError(value)
     }
 }
 
-impl<T> From<num::ParseFloatError> for ParseError<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl From<num::ParseFloatError> for ParseError {
     fn from(value: num::ParseFloatError) -> Self {
         ParseError::FloatParseError(value)
     }
@@ -204,34 +169,10 @@ pub(crate) fn compute_cypher_structure(input_content: &str) -> (usize, usize) {
 // ===============================================
 
 // ===============================================
-// Inidividual value parsing
-// ===============================================
-
-// word -> valid string
-// fn word_to_string<T>(word: &str) -> Result<String, ParseError<T>>
-// where
-//     T: Num + FromStr + Display + Debug,
-//     <T as FromStr>::Err: Debug + Clone,
-// {
-//     match word.chars().all(|c: char| c.is_ascii_alphabetic()) {
-//         true => Ok(word.to_owned()),
-//         false => {
-//             let err_message = format!("Unable to parse word into valid ascii string: {word}");
-//             eprintln!("{}", err_message);
-//             Err(ParseError::NonAsciiWord(err_message.to_owned()))
-//         }
-//     }
-// }
-
-// ===============================================
 // larger orchestrators + related From function
 // ===============================================
 
-pub(crate) fn input_to_cypher_tokens<T>(input_content: &str) -> Vec<CypherToken<T>>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+pub(crate) fn input_to_cypher_tokens<T: TokenNumber>(input_content: &str) -> Vec<CypherToken<T>> {
     input_content
         .split_ascii_whitespace()
         .map(Into::into)
@@ -239,26 +180,20 @@ where
 }
 
 // take an input's parsed word strings, validate them, then convert them to tokens
-impl<T> From<&str> for CypherToken<T>
-where
-    T: Num + FromStr + Display + Debug,
-    <T as FromStr>::Err: Debug + Clone,
-{
+impl<T: TokenNumber> From<&str> for CypherToken<T> {
     fn from(word: &str) -> Self {
         let raw_text: String = word.to_owned();
-        let value: Result<TokenValue<T>, ParseError<T>> = TokenValue::new(&raw_text);
+        let token_value: Result<TokenValue<T>, ParseError> = TokenValue::new(&raw_text);
 
-        let initial_digit_values: Option<Vec<u32>> = match &value {
-            // Ok(string_value) => Some(string_to_digit_group(string_value)),
-            // Err(_) => None,
-            Ok(token) => DigitGroup::from(token),
-            Err(e) => todo!(),
+        let digit_values: Option<Vec<u32>> = match &token_value {
+            Ok(token_value) => Some(token_value.into()),
+            Err(_e) => None,
         };
 
-        CypherToken<T> {
+        CypherToken {
             raw_text,
-            value,
-            initial_digit_values,
+            token_value,
+            digit_values,
         }
     }
 }
