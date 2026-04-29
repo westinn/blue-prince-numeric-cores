@@ -41,6 +41,10 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
 
         let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed);
 
+        // @TODO: this is where we would begin stacking initial potential values.
+        //        rather than a Vector of DG's, it'd be a Vec<Vec<DG>>. Or wrapped in Option, potentially, in this case.
+        //        This also means that the parser gives up the idea of providing the initial DigitGroup digits in the form of Vec<u32>.
+        //        Parsers would stop perscribing meaning to the Tokens by turning them into values. They simply provide the valid processable inputs.
         let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
             .iter()
             .map(|token: &CypherToken<T>| -> Option<DigitGroup> { token.try_into().ok() })
