@@ -1,21 +1,30 @@
 use core::num;
 use itertools::Itertools;
-use num_traits::Num;
+use num_traits::{FromPrimitive, Num, ToPrimitive};
 use std::{
     fmt::{Debug, Display},
     io,
     str::FromStr,
 };
 
+use crate::numeric_core_solver::numeric_core_state::states::{NumericCoreState, NumericCoreValue};
+
 // ===============================================
 // Types
 // ===============================================
 
-pub trait TokenNumber: Num + FromStr + Display + Debug + Copy {}
-impl<T> TokenNumber for T where T: Num + FromStr + Display + Debug + Copy {}
+pub trait TokenNumber:
+    Num + FromStr + Display + Debug + Copy + FromPrimitive + ToPrimitive + PartialOrd
+{
+}
+impl<T> TokenNumber for T where
+    T: Num + FromStr + Display + Debug + Copy + FromPrimitive + ToPrimitive + PartialOrd
+{
+}
 
 #[derive(Debug, Clone)]
 pub(crate) enum TokenValue<T> {
+    NumericCore(NumericCoreValue),
     Number(T),
     Word(String),
     // RomanNumeral(String),
@@ -29,12 +38,20 @@ impl<T: TokenNumber> TokenValue<T> {
 
         // actual creation
         match raw_text {
-            _ if is_number(raw_text) => Ok(Self::Number(raw_text.parse::<T>().map_err(|_| {
-                ParseError::FromStrParseError(format!(
-                    "Unable to parse text into number: {}",
-                    raw_text
-                ))
-            })?)),
+            _ if is_number(raw_text) => {
+                let parsed_number = raw_text.parse::<T>().map_err(|_| {
+                    ParseError::FromStrParseError(format!(
+                        "Unable to parse text into number: {}",
+                        raw_text
+                    ))
+                })?;
+                match NumericCoreState::new(Some(parsed_number)) {
+                    NumericCoreState::NumericCore(numeric_core_value) => {
+                        Ok(TokenValue::NumericCore(numeric_core_value))
+                    }
+                    _ => Ok(Self::Number(parsed_number)),
+                }
+            }
             _ if is_word(raw_text) => Ok(Self::Word(raw_text.to_owned())),
             _ => Err(ParseError::InvalidTokenValue(format!(
                 "Unable to parse raw_text into valid input: {raw_text}"
@@ -149,7 +166,6 @@ impl<T: TokenNumber> From<&str> for CypherToken<T> {
     fn from(word: &str) -> Self {
         let raw_text: String = word.to_owned();
         let token_value: Result<TokenValue<T>, ParseError> = TokenValue::new(&raw_text);
-
         CypherToken {
             raw_text,
             token_value,

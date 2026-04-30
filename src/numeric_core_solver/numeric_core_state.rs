@@ -7,10 +7,9 @@ pub mod states {
     use itertools::Itertools;
     use num_traits::{FromPrimitive, Num, ToPrimitive};
     use std::{
-        array::{IntoIter, from_fn},
+        array::from_fn,
         fmt::{Debug, Display},
         num::ParseIntError,
-        slice::Iter,
     };
 
     use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber, TokenValue};
@@ -22,7 +21,10 @@ pub mod states {
     // ===============================================
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub(crate) struct DigitGroup([u32; 4]);
+    pub(crate) enum DigitGroup {
+        ProcessableDigitGroup([u32; 4]),
+        NumericCore(NumericCoreValue),
+    }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     pub(crate) struct NumericCoreValue(u32);
@@ -49,11 +51,16 @@ pub mod states {
         }
     }
 
+    impl From<ParseIntError> for InvalidStateError {
+        fn from(_error: ParseIntError) -> Self {
+            InvalidStateError(_error.to_string())
+        }
+    }
+
     // ===============================================
     // Implementations
     // ===============================================
     fn number_value_to_all_digit_groups<T: TokenNumber>(value: T) -> Vec<DigitGroup> {
-        // its a u32 initially so len() is ok
         let digits_as_string: String = value.to_string();
 
         // we need 4 groups to calculate numeric cores
@@ -92,14 +99,27 @@ pub mod states {
         }
     }
 
+    // token -> digitgroup
     impl<T: TokenNumber> From<&CypherToken<T>> for Vec<DigitGroup> {
         fn from(token: &CypherToken<T>) -> Self {
             match token.get_token_value() {
-                Ok(TokenValue::Number(number)) => number_value_to_all_digit_groups(number.clone()),
+                Ok(TokenValue::Number(number)) => number_value_to_all_digit_groups(*number),
                 Ok(TokenValue::Word(word)) => {
                     word_to_digit_group(word).map_or_else(|_e| vec![], |v| vec![v])
                 }
                 Err(_e) => vec![],
+                // this feels silly, so its at the bottom
+                Ok(TokenValue::NumericCore(nc_value)) => {
+                    // safe to unwrap as we checked types previously so it's an ascii digit
+                    // dont think we need to pad this but I'll leave it: format!("{:04}", nc_value.get_value())
+                    let value_as_dg = nc_value
+                        .get_value()
+                        .to_string()
+                        .chars()
+                        .map(|c| c.to_digit(10).unwrap())
+                        .collect_vec();
+                    vec![DigitGroup::new(&value_as_dg).unwrap()]
+                }
             }
         }
     }
@@ -121,91 +141,105 @@ pub mod states {
         type Error = ParseIntError;
 
         fn try_from(digit_group: DigitGroup) -> Result<Self, Self::Error> {
-            digit_group
-                .0
-                .iter()
-                .map(|digit| digit.to_string())
-                .collect::<String>()
-                .parse::<u32>()
+            match digit_group {
+                DigitGroup::ProcessableDigitGroup(array) => array
+                    .iter()
+                    .map(|digit| digit.to_string())
+                    .collect::<String>()
+                    .parse::<u32>(),
+                DigitGroup::NumericCore(numeric_core_value) => Ok(numeric_core_value.get_value()),
+            }
         }
     }
 
     impl DigitGroup {
         pub fn new(input_group: &[u32]) -> Result<Self, InvalidStateError> {
-            input_group.iter().map(|&v| v).collect_array().map_or_else(
-                || {
-                    Err(InvalidStateError(format!(
-                        "Unable to convert Vector of u32 into array of size {} during DigitGroup creation. Vector: {:?}",
-                        NUM_OF_OPS, input_group
-                    )))
-                },
-                |array: [u32; NUM_OF_OPS]| Ok(DigitGroup(array)),
-            )
+            // if the input so far is short in length, its a numeric core already
+            match input_group.len() {
+                (1..4) => {
+                    Ok(DigitGroup::NumericCore(NumericCoreValue(input_group
+                        .iter()
+                        .map(|digit| digit.to_string())
+                        .collect::<String>()
+                        .parse::<u32>()?)))
+                }
+                _ => {
+                    input_group.iter().map(|&v| v).collect_array().map_or_else(
+                        || Err(InvalidStateError(format!("Unable to convert Vector of u32 into array of size {} during DigitGroup creation. Vector: {:?}", NUM_OF_OPS, input_group))),
+                        |array: [u32; NUM_OF_OPS]| {
+                            Ok(DigitGroup::ProcessableDigitGroup(array))
+                        }
+                    )
+                }
+            }
         }
 
         pub fn process_digit_group(self) -> Option<NumericCoreValue> {
-            let digit_group_values: [u32; 4] = self.0;
-            // 6 x [ arrays of size 4 ]
-            let binary_op_combos = &OP_COMBOS;
+            match self {
+                DigitGroup::NumericCore(numeric_core_value) => Some(numeric_core_value),
+                DigitGroup::ProcessableDigitGroup(digit_group_values) => {
+                    // 6 x [ arrays of size 4 ]
+                    let binary_op_combos = &OP_COMBOS;
 
-            /*
-            a vec of arrays, each of which has 4 tuples that are combined to act as instructions to calculate numeric core
-            size: of ( # of op_combos * # of digit_groups )
-            notes: filters out any divide by 0s
-            - given the list of digit_groups (4) and the binaryops available (4)
-            - a paired up Vector of (binary_operation to apply to RHS, number to act as RHS)
-            - results in a fold function of (binary_op(accumulator, number))
-            */
-            binary_op_combos
-                .into_iter()
-                .filter_map(
-                    // zip up all operations and the digits they will apply to
-                    |ops: [BinaryOp; NUM_OF_OPS]| -> Option<[(BinaryOp, u32); NUM_OF_OPS]> {
-                        // apparently this is a safer, compiler checked, alternative to zip(), just more manual
-                        let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] =
-                            from_fn(|i| (ops[i], digit_group_values[i]));
-                        (!zipped_op_digit.contains(&(Divide, 0))).then_some(zipped_op_digit)
-                    },
-                )
-                .map(
-                    // use fold to apply the (operation, digit) tuple in order
-                    |ops_for_digit_group: [(BinaryOp, u32); NUM_OF_OPS]| -> f64 {
-                        ops_for_digit_group.into_iter().fold(
-                            0.0,
-                            |acc: f64, (curr_op, curr_number): (BinaryOp, u32)| {
-                                let curr_number_as_f64: f64 = f64::from(curr_number);
-                                match curr_op {
-                                    Add => acc + curr_number_as_f64,
-                                    Subtract => acc - curr_number_as_f64,
-                                    Multiply => acc * curr_number_as_f64,
-                                    Divide => acc / curr_number_as_f64,
-                                }
+                    /*
+                    a vec of arrays, each of which has 4 tuples that are combined to act as instructions to calculate numeric core
+                    size: of ( # of op_combos * # of digit_groups )
+                    notes: filters out any divide by 0s
+                    - given the list of digit_groups (4) and the binaryops available (4)
+                    - a paired up Vector of (binary_operation to apply to RHS, number to act as RHS)
+                    - results in a fold function of (binary_op(accumulator, number))
+                    */
+                    binary_op_combos
+                        .into_iter()
+                        .filter_map(
+                            // zip up all operations and the digits they will apply to
+                            |ops: [BinaryOp; NUM_OF_OPS]| -> Option<[(BinaryOp, u32); NUM_OF_OPS]> {
+                                // apparently this is a safer, compiler checked, alternative to zip(), just more manual
+                                let zipped_op_digit: [(BinaryOp, u32); NUM_OF_OPS] =
+                                    from_fn(|i| (ops[i], digit_group_values[i]));
+                                (!zipped_op_digit.contains(&(Divide, 0))).then_some(zipped_op_digit)
                             },
                         )
-                    },
-                )
-                .filter_map(
-                    // use that final number to create a new NumericCoreState and get the final core value
-                    |float_result: f64| match NumericCoreState::new(Some(float_result)) {
-                        NumericCoreState::Invalid => None,
-                        valid_state => valid_state.get_numeric_core(),
-                    },
-                )
-                .min()
-        }
-
-        fn iter(&self) -> Iter<'_, u32> {
-            self.0.iter()
-        }
-
-        fn _into_iter(self) -> IntoIter<u32, NUM_OF_OPS> {
-            self.0.into_iter()
+                        .map(
+                            // use fold to apply the (operation, digit) tuple in order
+                            |ops_for_digit_group: [(BinaryOp, u32); NUM_OF_OPS]| -> f64 {
+                                ops_for_digit_group.into_iter().fold(
+                                    0.0,
+                                    |acc: f64, (curr_op, curr_number): (BinaryOp, u32)| {
+                                        let curr_number_as_f64: f64 = f64::from(curr_number);
+                                        match curr_op {
+                                            Add => acc + curr_number_as_f64,
+                                            Subtract => acc - curr_number_as_f64,
+                                            Multiply => acc * curr_number_as_f64,
+                                            Divide => acc / curr_number_as_f64,
+                                        }
+                                    },
+                                )
+                            },
+                        )
+                        .filter_map(
+                            // use that final number to create a new NumericCoreState and get the final core value
+                            |float_result: f64| match NumericCoreState::new(Some(float_result)) {
+                                NumericCoreState::Invalid => None,
+                                valid_state => valid_state.get_numeric_core(),
+                            },
+                        )
+                        .min()
+                }
+            }
         }
     }
 
     impl Display for DigitGroup {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "[ {} ]", self.iter().format(" "))
+            match &self {
+                DigitGroup::ProcessableDigitGroup(array) => {
+                    write!(f, "[ {} ]", array.iter().format(" "))
+                }
+                DigitGroup::NumericCore(numeric_core_value) => {
+                    write!(f, "[ {:?} ]", numeric_core_value)
+                }
+            }
         }
     }
 

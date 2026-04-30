@@ -132,6 +132,8 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
         )
     }
 
+    // this is having printing issues
+    // the values that result in None, end up coming from here
     pub(crate) fn print_digit_groups(&self) -> String {
         self.print_data(self.get_digit_groups(), |vec_dg: &Vec<DigitGroup>| {
             vec_dg
