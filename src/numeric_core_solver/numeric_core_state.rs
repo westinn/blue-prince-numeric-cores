@@ -103,11 +103,11 @@ pub mod states {
     impl<T: TokenNumber> From<&CypherToken<T>> for Vec<DigitGroup> {
         fn from(token: &CypherToken<T>) -> Self {
             match token.get_token_value() {
+                Err(_e) => vec![],
                 Ok(TokenValue::Number(number)) => number_value_to_all_digit_groups(*number),
                 Ok(TokenValue::Word(word)) => {
                     word_to_digit_group(word).map_or_else(|_e| vec![], |v| vec![v])
                 }
-                Err(_e) => vec![],
                 // this feels silly, so its at the bottom
                 Ok(TokenValue::NumericCore(nc_value)) => {
                     // safe to unwrap as we checked types previously so it's an ascii digit
@@ -155,13 +155,19 @@ pub mod states {
     impl DigitGroup {
         pub fn new(input_group: &[u32]) -> Result<Self, InvalidStateError> {
             // if the input so far is short in length, its a numeric core already
+            // there's probably a better way to do this, but we're relying on the typing system to have checked our logic
             match input_group.len() {
                 (1..4) => {
-                    Ok(DigitGroup::NumericCore(NumericCoreValue(input_group
+                    let value = input_group
                         .iter()
                         .map(|digit| digit.to_string())
                         .collect::<String>()
-                        .parse::<u32>()?)))
+                        .parse::<u32>()?;
+                    // double check that it's actually a numeric core value and not just an error in logic
+                    match NumericCoreState::new(Some(value)) {
+                        NumericCoreState::NumericCore(numeric_core_value) => Ok(DigitGroup::NumericCore(numeric_core_value)),
+                        _ => Err(InvalidStateError(format!("Input Vector of u32 during DigitGroup creation was too short to be anything but NumericCoreValue but failed validation. Vector: {:?}", input_group))),
+                    }
                 }
                 _ => {
                     input_group.iter().map(|&v| v).collect_array().map_or_else(
