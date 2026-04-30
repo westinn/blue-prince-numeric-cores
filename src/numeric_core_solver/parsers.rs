@@ -126,14 +126,11 @@ impl From<num::ParseFloatError> for ParseError {
 // Utilities
 // ===============================================
 
-pub(crate) fn compute_cypher_structure(input_content: &str) -> (usize, usize) {
-    let y_cypher_rows = input_content.lines().count();
-    let x_cypher_columns = input_content
+pub(crate) fn compute_cypher_structure(input_content: &str) -> Vec<usize> {
+    input_content
         .lines()
-        .map(|line| line.split_ascii_whitespace().count())
-        .max()
-        .unwrap_or(0);
-    (x_cypher_columns, y_cypher_rows)
+        .map(|line: &str| line.split_ascii_whitespace().count())
+        .collect_vec()
 }
 
 // ===============================================

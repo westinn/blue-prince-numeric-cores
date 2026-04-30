@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::{Debug, Display, Write};
 
 mod numeric_core_state;
 pub(crate) mod parsers;
@@ -26,7 +26,7 @@ for each NumericCoreIteration,
 
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver<T> {
-    cypher_structure: (usize, usize),
+    cypher_structure: Vec<usize>,
     cypher_tokens: Vec<CypherToken<T>>,
     digit_groups: Vec<Vec<DigitGroup>>,
     cypher_values: Vec<Option<NumericCoreValue>>,
@@ -37,7 +37,7 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
     pub fn new(input_content: &str) -> Self {
         let trimmed_input = input_content.trim();
 
-        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(trimmed_input);
+        let cypher_structure: Vec<usize> = parsers::compute_cypher_structure(trimmed_input);
 
         let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed_input);
 
@@ -85,8 +85,8 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
     }
 
     // getters
-    pub(crate) fn get_cypher_structure(&self) -> (usize, usize) {
-        self.cypher_structure
+    pub(crate) fn get_cypher_structure(&self) -> &[usize] {
+        &self.cypher_structure
     }
 
     pub(crate) fn get_cypher_tokens(&self) -> &[CypherToken<T>] {
@@ -109,17 +109,26 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
     where
         F: Fn(&V) -> String,
     {
-        let (xsize, _) = self.get_cypher_structure();
-        data.chunks(xsize)
-            .map(|row: &[V]| row.iter().map(&formatter).format(" "))
-            .format("\n")
-            .to_string()
+        let mut remaining_data = data;
+        let mut result_string = String::new();
+
+        for &row_size in self.get_cypher_structure() {
+            let current_row; // deferred initialization
+            (current_row, remaining_data) = remaining_data.split_at(row_size);
+            writeln!(
+                &mut result_string,
+                "{}",
+                current_row.iter().map(&formatter).format(" ")
+            )
+            .unwrap();
+        }
+        result_string
     }
 
     pub(crate) fn print_cypher_tokens(&self) -> String {
         self.print_data(
             self.get_cypher_tokens(),
-            |token: &CypherToken<T>| -> String { format!("{token:?}") },
+            |token: &CypherToken<T>| -> String { format!("{token}") },
         )
     }
 
