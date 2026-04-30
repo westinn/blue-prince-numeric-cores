@@ -35,20 +35,20 @@ pub struct NumericCoreSolver<T> {
 
 impl<T: TokenNumber> NumericCoreSolver<T> {
     pub fn new(input_content: &str) -> Self {
-        let trimmed = input_content.trim();
+        let trimmed_input = input_content.trim();
 
-        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(trimmed);
+        let cypher_structure: (usize, usize) = parsers::compute_cypher_structure(trimmed_input);
 
-        let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed);
+        let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed_input);
 
         // @TODO: this is where we would begin stacking initial potential values.
         //        rather than a Vector of DG's, it'd be a Vec<Vec<DG>>. Or wrapped in Option, potentially, in this case.
         //        This also means that the parser gives up the idea of providing the initial DigitGroup digits in the form of Vec<u32>.
         //        Parsers would stop perscribing meaning to the Tokens by turning them into values. They simply provide the valid processable inputs.
-        let digit_groups: Vec<Option<DigitGroup>> = cypher_tokens
-            .iter()
-            .map(|token: &CypherToken<T>| -> Option<DigitGroup> { token.try_into().ok() })
-            .collect_vec();
+        let digit_groups: Vec<Vec<DigitGroup>> =
+            cypher_tokens.iter().map(|token| token.into()).collect_vec();
+
+        let cypher_values = ;
 
         let cypher_values: Vec<Option<NumericCoreValue>> = digit_groups
             .iter()

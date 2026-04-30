@@ -12,20 +12,9 @@ pub mod states {
         num::ParseIntError,
     };
 
-    use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber};
+    use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber, TokenValue};
 
     mod binary_ops;
-
-    /*// ===============================================
-    These are the states that we can be in while processing a Number that could be a NumericCore
-    a valid NumericCore result: a whole number with 3 or less digits, >0 and <1000
-    a Processable value: a whole number with 4 or more digits, aka >1000
-    an Invalid result: a non-whole number, or a negative number
-
-    there are additional traits to reflect current logical status:
-    ValidState: this is a trait to reflect a state with values to consider, such as NumericCore or Processable
-    ResultState: this is a trait to reflect a state that has no more steps to consider, such as NumericCore or Invalid
-    */// ===============================================
 
     // ===============================================
     // Real Types
@@ -59,23 +48,41 @@ pub mod states {
         }
     }
 
-    // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    // struct _NoValidNumericCore;
-
-    // #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    // pub struct TooManyPossibleValuesError;
-
     // ===============================================
     // Implementations
     // ===============================================
+    fn number_value_to_all_digit_groups<T: TokenNumber>(value: T) -> Vec<DigitGroup> {
+        // its a u32 initially so len() is ok
+        let digits_as_string: String = value.to_string();
 
-    /* impl TryFrom<&DigitGroup> for NumericCoreState {
-        type Error = TooManyPossibleValuesError;
+        // we need 4 groups to calculate numeric cores
+        // which means we split a list 3 times
+        const GROUPS_NEEDED: usize = 4;
+        const SPLIT_INDEXES_NEEDED: usize = GROUPS_NEEDED - 1;
+        (0..digits_as_string.len() - 1)
+            .array_combinations::<SPLIT_INDEXES_NEEDED>()
+            .map(|[a, b, c]| {
+                DigitGroup::new(&[
+                    digits_as_string[..=a].parse::<u32>().unwrap(),
+                    digits_as_string[a + 1..=b].parse::<u32>().unwrap(),
+                    digits_as_string[b + 1..=c].parse::<u32>().unwrap(),
+                    digits_as_string[c + 1..].parse::<u32>().unwrap(),
+                ])
+                .unwrap()
+                // this unwrap is ok because I am very manually building this instance
+                // There would be an issue if I ever change the number of operators/rules of the riddle
+            })
+            .collect_vec()
+    }
 
-        fn try_from(value: &DigitGroup) -> Result<Self, Self::Error> {
-            value.process_digit_group()
-        }
-    } */
+    fn word_to_digit_group(word: &str) -> Result<DigitGroup, InvalidStateError> {
+        let dg_values: Vec<u32> = word
+            .chars()
+            .map(|c: char| (c.to_ascii_uppercase() as u32) - ('A' as u32) + 1)
+            .collect_vec();
+
+        DigitGroup::new(&dg_values)
+    }
 
     // DigitGroup -> Option<NumericCoreValue>
     impl From<&DigitGroup> for Option<NumericCoreValue> {
@@ -85,18 +92,14 @@ pub mod states {
     }
 
     // basically convenience wrapper for the TryFrom below:
-    // does this: `slice of [u32] -> DigitGroup`
-    impl<T: TokenNumber> TryFrom<&CypherToken<T>> for DigitGroup {
-        type Error = InvalidStateError;
-
-        fn try_from(token: &CypherToken<T>) -> Result<Self, Self::Error> {
-            match token.get_initial_digit_values() {
-                Some(initial_digit_values) => initial_digit_values.try_into(),
-                None => {
-                    let msg = format!("No digit group values in cypher token: {token}");
-                    eprintln!("{}", msg);
-                    Err(InvalidStateError(msg))
+    impl<T: TokenNumber> From<&CypherToken<T>> for Vec<DigitGroup> {
+        fn from(token: &CypherToken<T>) -> Self {
+            match token.get_token_value() {
+                Ok(TokenValue::Number(number)) => number_value_to_all_digit_groups(number.clone()),
+                Ok(TokenValue::Word(word)) => {
+                    word_to_digit_group(word).map_or_else(|_e| vec![], |v| vec![v])
                 }
+                Err(_e) => vec![],
             }
         }
     }
@@ -129,7 +132,6 @@ pub mod states {
 
     impl IntoIterator for DigitGroup {
         type Item = u32;
-
         type IntoIter = IntoIter<u32, NUM_OF_OPS>;
 
         fn into_iter(self) -> Self::IntoIter {
@@ -139,14 +141,14 @@ pub mod states {
 
     impl DigitGroup {
         pub fn new(input_group: &[u32]) -> Result<Self, InvalidStateError> {
-            input_group.iter().collect_array().map_or_else(
+            input_group.iter().map(|&v| v).collect_array().map_or_else(
                 || {
                     Err(InvalidStateError(format!(
                         "Unable to convert Vector of u32 into array of size {} during DigitGroup creation. Vector: {:?}",
                         NUM_OF_OPS, input_group
                     )))
                 },
-                |array: [&u32; NUM_OF_OPS]| Ok(DigitGroup(array.map(|&value| value))),
+                |array: [u32; NUM_OF_OPS]| Ok(DigitGroup(array)),
             )
         }
 
@@ -273,36 +275,12 @@ pub mod states {
 
         fn process_value(self) -> Option<NumericCoreValue> {
             // get current value as all possible digit groups and iterate
-            let all_digit_groups: Vec<DigitGroup> = self.value_to_digit_groups();
+            let all_digit_groups: Vec<DigitGroup> =
+                number_value_to_all_digit_groups(self.get_value());
             all_digit_groups
                 .iter()
                 .filter_map(|dg: &DigitGroup| dg.process_digit_group())
-                .min_by_key(|v| v.get_value())
-        }
-
-        fn value_to_digit_groups(&self) -> Vec<DigitGroup> {
-            // its a u32 initially so len() is ok
-            // @TODO: I think the first parsed instance of a token is not to be combined!
-            let digits_as_string: String = self.get_value().to_string();
-
-            // we need 4 groups to calculate numeric cores
-            // which means we split a list 3 times
-            const GROUPS_NEEDED: usize = 4;
-            const SPLIT_INDEXES_NEEDED: usize = GROUPS_NEEDED - 1;
-            (0..digits_as_string.len() - 1)
-                .array_combinations::<SPLIT_INDEXES_NEEDED>()
-                .map(|[a, b, c]| {
-                    DigitGroup::new(&[
-                        digits_as_string[..=a].parse::<u32>().unwrap(),
-                        digits_as_string[a + 1..=b].parse::<u32>().unwrap(),
-                        digits_as_string[b + 1..=c].parse::<u32>().unwrap(),
-                        digits_as_string[c + 1..].parse::<u32>().unwrap(),
-                    ])
-                    .unwrap()
-                    // this unwrap is ok because I am very manually building this instance
-                    // There would be an issue if I ever change the number of operators/rules of the riddle
-                })
-                .collect_vec()
+                .min_by_key(|v: &NumericCoreValue| v.get_value())
         }
     }
 }
