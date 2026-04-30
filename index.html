@@ -13,8 +13,6 @@
         id="puzzleInput"
         name="puzzleInput"
         placeholder="Enter your input here..."
-        rows="8"
-        cols="30"
         autocapitalize
         autofocus
       >
@@ -24,7 +22,13 @@
 
     <div id="outputs">
       <h2 class="section-header">Cypher Output:</h2>
-      <pre id="output"></pre>
+      <textarea
+        id="output"
+        name="puzzleOutput"
+        placeholder="Results will be here. 'None' means there was no valid result; that means your input was incorrect."
+        autocapitalize
+      >
+      </textarea>
     </div>
   </body>
 
@@ -40,7 +44,7 @@
         // Call Rust function
         const result = process_input_from_web(inputText);
         // Print the result
-        document.getElementById("output").innerText = result;
+        document.getElementById("output").value = result;
       });
     };
     run();

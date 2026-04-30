@@ -106,15 +106,15 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
         F: Fn(&V) -> String,
     {
         let (xsize, _) = self.get_cypher_structure();
-        let mut result_string = String::new();
-
-        for row in data.chunks(xsize) {
-            for item in row {
-                result_string.push_str(&format!("{} ", formatter(item)));
-            }
-            result_string.push_str("\n");
-        }
-        result_string
+        data.chunks(xsize)
+            .map(|row: &[V]| {
+                row.iter()
+                    .map(&formatter)
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 
     pub(crate) fn print_cypher_tokens(&self) -> String {
