@@ -17,8 +17,8 @@ impl<T> TokenNumber for T where T: Num + FromStr + Display + Debug + Copy {}
 #[derive(Debug, Clone)]
 pub(crate) enum TokenValue<T> {
     Number(T),
-    // RomanNumeral(String),
     Word(String),
+    // RomanNumeral(String),
 }
 
 impl<T: TokenNumber> TokenValue<T> {
@@ -62,31 +62,7 @@ impl<T: TokenNumber> TokenValue<T> {
     //         'M' | 'm' => 1000
     //     }).collect_vec()
     // }
-
-    // @TODO: this big section now moves to solver or state, as it determines what to do with valid TokenValues
-    //        or does it make sense to keep it here as a Token object should know how to self-represent in a solver?
-    //        this is complicated by the fact that a lot of processing would be handled by passing it to a ProcessableValue state more directly as we do the combinations there
-    // fn number_to_digit_group_values(number: &T) -> Vec<u32> {
-    //     number.to_string().chars().map(|c| c as u32).collect_vec()
-    // }
-
-    // fn string_to_digit_group_values(word: &str) -> Vec<u32> {
-    //     word.chars()
-    //         .map(|c| (c.to_ascii_uppercase() as u32) - ('A' as u32) + 1)
-    //         .collect_vec()
-    // }
 }
-
-// @TODO: this too goes to solver or state
-// impl<T: TokenNumber> From<&TokenValue<T>> for Vec<Vec<u32>> {
-//     fn from(token: &TokenValue<T>) -> Self {
-//         match token {
-//             TokenValue::Number(number) => TokenValue::number_to_digit_group_values(number),
-//             //TokenValue::RomanNumeral(roman_numeral) => todo!(),
-//             TokenValue::Word(word) => TokenValue::<T>::string_to_digit_group_values(word),
-//         }
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub(crate) struct CypherToken<T> {
@@ -103,11 +79,6 @@ impl<T: TokenNumber> CypherToken<T> {
     pub(crate) fn get_token_value(&self) -> Result<&TokenValue<T>, &ParseError> {
         self.token_value.as_ref()
     }
-    // TODO: could flatten these types of values so None === []
-    //       though the representation of never being able to SET digits in the first place might be helpful
-    // pub(crate) fn get_initial_digit_values(&self) -> Option<&[u32]> {
-    //     self.digit_values.as_deref()
-    // }
 }
 
 impl<T: TokenNumber> Display for CypherToken<T> {
@@ -181,12 +152,6 @@ impl<T: TokenNumber> From<&str> for CypherToken<T> {
     fn from(word: &str) -> Self {
         let raw_text: String = word.to_owned();
         let token_value: Result<TokenValue<T>, ParseError> = TokenValue::new(&raw_text);
-
-        // @TODO: this also moves to solver
-        // let digit_values: Option<Vec<u32>> = match &token_value {
-        //     Ok(token_value) => Some(token_value.into()),
-        //     Err(_e) => None,
-        // };
 
         CypherToken {
             raw_text,

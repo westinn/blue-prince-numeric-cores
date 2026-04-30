@@ -28,7 +28,7 @@ for each NumericCoreIteration,
 pub struct NumericCoreSolver<T> {
     cypher_structure: (usize, usize),
     cypher_tokens: Vec<CypherToken<T>>,
-    digit_groups: Vec<Option<DigitGroup>>,
+    digit_groups: Vec<Vec<DigitGroup>>,
     cypher_values: Vec<Option<NumericCoreValue>>,
     cypher_alpha: Vec<Option<char>>,
 }
@@ -45,18 +45,22 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
         //        rather than a Vector of DG's, it'd be a Vec<Vec<DG>>. Or wrapped in Option, potentially, in this case.
         //        This also means that the parser gives up the idea of providing the initial DigitGroup digits in the form of Vec<u32>.
         //        Parsers would stop perscribing meaning to the Tokens by turning them into values. They simply provide the valid processable inputs.
-        let digit_groups: Vec<Vec<DigitGroup>> =
-            cypher_tokens.iter().map(|token| token.into()).collect_vec();
+        // is is an outer vector capturing each token, and each inner vector is that tokens possible digit groups
+        let digit_groups: Vec<Vec<DigitGroup>> = cypher_tokens
+            .iter()
+            .map(|token: &CypherToken<T>| token.into())
+            .collect_vec();
 
-        let cypher_values = ;
-
+        // the above digit_groups should resolve to a single NumericCoreValue during this step
+        // since if there are multiple possible values, we grab the minimum one
         let cypher_values: Vec<Option<NumericCoreValue>> = digit_groups
             .iter()
             .map(
-                |op_digit_group: &Option<DigitGroup>| -> Option<NumericCoreValue> {
-                    op_digit_group
-                        .as_ref()
-                        .and_then(|dg: &DigitGroup| dg.into())
+                |vec_tokens_dg: &Vec<DigitGroup>| -> Option<NumericCoreValue> {
+                    vec_tokens_dg
+                        .iter()
+                        .filter_map(|dg: &DigitGroup| dg.into())
+                        .min_by_key(|v: &NumericCoreValue| v.get_value())
                 },
             )
             .collect_vec();
@@ -89,7 +93,7 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
         &self.cypher_tokens
     }
 
-    pub(crate) fn get_digit_groups(&self) -> &[Option<DigitGroup>] {
+    pub(crate) fn get_digit_groups(&self) -> &[Vec<DigitGroup>] {
         &self.digit_groups
     }
 
@@ -107,14 +111,9 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
     {
         let (xsize, _) = self.get_cypher_structure();
         data.chunks(xsize)
-            .map(|row: &[V]| {
-                row.iter()
-                    .map(&formatter)
-                    .collect::<Vec<String>>()
-                    .join(" ")
-            })
-            .collect::<Vec<String>>()
-            .join("\n")
+            .map(|row: &[V]| row.iter().map(&formatter).format(" "))
+            .format("\n")
+            .to_string()
     }
 
     pub(crate) fn print_cypher_tokens(&self) -> String {
@@ -125,13 +124,13 @@ impl<T: TokenNumber> NumericCoreSolver<T> {
     }
 
     pub(crate) fn print_digit_groups(&self) -> String {
-        self.print_data(
-            self.get_digit_groups(),
-            |dg: &Option<DigitGroup>| match dg.as_ref() {
-                Some(values) => format!("{values:?}"),
-                None => "None".to_owned(),
-            },
-        )
+        self.print_data(self.get_digit_groups(), |vec_dg: &Vec<DigitGroup>| {
+            vec_dg
+                .iter()
+                .map(|dg| dg.to_string())
+                .format(" ")
+                .to_string()
+        })
     }
 
     pub(crate) fn print_cypher_values(&self) -> String {

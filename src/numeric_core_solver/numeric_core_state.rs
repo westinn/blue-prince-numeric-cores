@@ -10,6 +10,7 @@ pub mod states {
         array::{IntoIter, from_fn},
         fmt::{Debug, Display},
         num::ParseIntError,
+        slice::Iter,
     };
 
     use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber, TokenValue};
@@ -91,7 +92,6 @@ pub mod states {
         }
     }
 
-    // basically convenience wrapper for the TryFrom below:
     impl<T: TokenNumber> From<&CypherToken<T>> for Vec<DigitGroup> {
         fn from(token: &CypherToken<T>) -> Self {
             match token.get_token_value() {
@@ -127,15 +127,6 @@ pub mod states {
                 .map(|digit| digit.to_string())
                 .collect::<String>()
                 .parse::<u32>()
-        }
-    }
-
-    impl IntoIterator for DigitGroup {
-        type Item = u32;
-        type IntoIter = IntoIter<u32, NUM_OF_OPS>;
-
-        fn into_iter(self) -> Self::IntoIter {
-            self.0.into_iter()
         }
     }
 
@@ -202,17 +193,31 @@ pub mod states {
                 )
                 .min()
         }
-    }
 
-    // not sure if we use this anyway to be honest
-    impl<T> From<T> for NumericCoreState
-    where
-        T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
-    {
-        fn from(value: T) -> Self {
-            NumericCoreState::new(Some(value))
+        fn iter(&self) -> Iter<'_, u32> {
+            self.0.iter()
+        }
+
+        fn _into_iter(self) -> IntoIter<u32, NUM_OF_OPS> {
+            self.0.into_iter()
         }
     }
+
+    impl Display for DigitGroup {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "[ {} ]", self.iter().format(" "))
+        }
+    }
+
+    // // not sure if we use this anyway to be honest
+    // impl<T> From<T> for NumericCoreState
+    // where
+    //     T: Num + PartialOrd + FromPrimitive + ToPrimitive + Copy + Display,
+    // {
+    //     fn from(value: T) -> Self {
+    //         NumericCoreState::new(Some(value))
+    //     }
+    // }
 
     impl NumericCoreState {
         // Create a NumericCoreState from an arbitrary number
