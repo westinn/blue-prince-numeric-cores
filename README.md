@@ -27,3 +27,10 @@ build.sh && python3 -m http.server
 This will provide a localhost server at `http://[::1]:8000/`.
 
 Or more simply, via the `run.sh` script provided.
+
+## TODO
+- Update styling for GUI to match the game, Blue Prince (somewhat at least!).
+- Deploy to Github Pages.
+- Add tests within Rust.
+- Add a release pipeline that releases to Github Pages.
+- Include `tokei` in release pipeline to add code line counter to README. Just for fun!
