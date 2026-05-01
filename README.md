@@ -8,7 +8,7 @@ I plan to have this accessible via WASM and Github Pages. The existing solutions
 
 ## Building
 
-The Rust portion is it's own library, and used to take in a file as input. Since it now targets a basic web GUI, it now needs to be built using [`wasm-pack`](https://github.com/wasm-bindgen/wasm-pack):
+The Rust portion is it's own library and used to take in a file as input. Since it now targets a basic web GUI, it now needs to be built using [`wasm-pack`](https://github.com/wasm-bindgen/wasm-pack):
 
 ```
 wasm-pack build --target web
@@ -25,3 +25,5 @@ build.sh && python3 -m http.server
 ```
 
 This will provide a localhost server at `http://[::1]:8000/`.
+
+Or more simply, via the `run.sh` script provided.

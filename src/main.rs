@@ -1,5 +1,7 @@
 mod numeric_core_solver;
 
+use std::fs;
+
 use numeric_core_solver::NumericCoreSolver;
 
 fn main() {
@@ -8,7 +10,11 @@ fn main() {
 
 fn debug() {
     // Works
-    let numeric_core_solver1 = NumericCoreSolver::new("./inputs/cypher.txt");
+    // because its mostly web based now, this will take any string input
+    let file_content =
+        fs::read_to_string("./inputs/cypher_tester.txt").expect("Failed to read the file!");
+
+    let numeric_core_solver1 = NumericCoreSolver::<f64>::new(&file_content);
     println!("{numeric_core_solver1}");
 
     // let numeric_core_solver2 = NumericCoreSolver::new("./inputs/cypher_multiline_singleword.txt");
