@@ -1,3 +1,10 @@
+/* Function */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   font-family: sans-serif;
   font-size: x-large;
@@ -13,16 +20,17 @@ body {
   gap: 1em;
 }
 
-#title {
+.title-section {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   margin: 0;
   width: 100%;
 }
 
-#inputs,
-#outputs {
+.inputs,
+.outputs {
   display: flex;
   flex-direction: column;
 
@@ -31,7 +39,7 @@ body {
   gap: 10px 0px;
 }
 
-.section-header {
+.sectionHeader {
   margin: 0px;
 }
 
@@ -45,8 +53,72 @@ textarea {
   resize: none;
 }
 
-#runButton {
+.runButton {
   padding: 10px;
   font-size: large;
   cursor: pointer;
+}
+
+/* Aesthetic */
+body {
+  background-color: #25599a;
+  /* grid */
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.2) 1px, transparent 1px);
+}
+
+.bluePrinceFontColor {
+  color: #25599a;
+  -webkit-text-stroke: 0.03em white;
+}
+
+.title {
+  font-family: sans-serif;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* AI wrote these arrows because CSS is a disaster */
+.divider {
+  display: flex;
+  align-items: center; /* Vertically centers the arrows and the line perfectly */
+  width: 100%;
+  margin: 20px 0;
+
+  hr {
+    flex-grow: 1; /* 🔥 This forces the line to stretch and touch the arrows seamlessly */
+    border: 0;
+    height: 2px; /* Slightly thicker line to match the arrow weight better */
+    background-color: white; /* Must exactly match the arrow border-color below */
+    margin: 0;
+  }
+
+  &::before,
+  &::after {
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+
+  /* Left Arrow */
+  &::before {
+    border-width: 6px 10px 6px 0;
+    border-color: transparent white transparent transparent;
+  }
+
+  /* Right Arrow */
+  &::after {
+    border-width: 6px 0 6px 10px;
+    border-color: transparent transparent transparent white;
+  }
+}
+
+.inputs,
+.outputs {
+  padding: 0.5em;
+  border: 0.2em solid white;
+  border-radius: 0.25em;
 }

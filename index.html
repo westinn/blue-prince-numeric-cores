@@ -5,24 +5,50 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
 
-  <body id="body">
-    <h1 id="title">Blue Prince Numeric Core Solver</h1>
-    <div id="inputs">
-      <h2 class="section-header">Puzzle Input:</h2>
+  <body class="body">
+    <!-- Title -->
+    <div class="titleSection">
+      <h1 class="title bluePrinceFontColor">Blue Prince Numeric Core Solver</h1>
+      <div class="divider">
+        <hr />
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="inputs">
+      <h2 class="sectionHeader bluePrinceFontColor">Puzzle Input:</h2>
       <textarea
-        id="puzzleInput"
+        class="puzzleInput"
         name="puzzleInput"
         placeholder="Enter your input here..."
         autocapitalize
         autofocus
-      ></textarea>
-      <button id="runButton">Solve!</button>
+      >
+pigs sand mail date head
+clam peak sand joya well
+toad card will tape legs
+tree road maid slab rock
+hand vase safe clay toes
+
+86455 3614
+
+MCXIII MCXIV MCXV
+
+1 2 3 4 5
+6 7 8 9 10
+11 12 13 14 15
+16 17 18 19 20
+21 22 23 24 25
+26 27</textarea
+      >
+      <button class="runButton">Solve!</button>
     </div>
 
-    <div id="outputs">
-      <h2 class="section-header">Cypher Output:</h2>
+    <!-- Outputs -->
+    <div class="outputs">
+      <h2 class="sectionHeader bluePrinceFontColor">Cypher Output:</h2>
       <textarea
-        id="output"
+        class="puzzleOutput"
         name="puzzleOutput"
         placeholder="Results will be here. 'None' means there was no valid result; that means your input was incorrect."
         autocapitalize
@@ -31,6 +57,7 @@
     </div>
   </body>
 
+  <!-- Rust -> WASM -->
   <script type="module">
     // Import the wasm-pack generated code
     import init, { process_input_from_web } from "./pkg/numeric_cores.js";
@@ -43,7 +70,7 @@
         // Call Rust function
         const result = process_input_from_web(inputText);
         // Print the result
-        document.getElementById("output").value = result;
+        document.getElementById("puzzleOutput").value = result;
       });
     };
     run();
