@@ -7,10 +7,12 @@ pub mod states {
     };
     use itertools::Itertools;
     use num_traits::{FromPrimitive, Num, ToPrimitive};
+    use roman_numerals_rs::RomanNumeral;
     use std::{
         array::from_fn,
         fmt::{Debug, Display},
         num::ParseIntError,
+        str::FromStr,
     };
 
     mod binary_ops;
@@ -92,7 +94,7 @@ pub mod states {
     }
 
     fn roman_numeral_to_digit_group_values<T: TokenNumber>(
-        token_value: TokenValue<T>,
+        token_value: &TokenValue<T>,
     ) -> Result<Vec<DigitGroup>, ParseError> {
         // validate that this is a roman numeral
         // for the text that makes up a roman numeral
@@ -102,27 +104,36 @@ pub mod states {
         //      if they are all valid, that is a valid digit group array
 
         match token_value {
-            _ => Err(ParseError::InvalidTokenValue(format!(
-                "Attempting to pull all possible RomanNumeral DigitGroups from a non-RomanNumeral token value: {:?}",
-                token_value
-            ))),
             TokenValue::RomanNumeral(roman_numeral) => {
-                //
-                let roman_numeral_as_string: String = roman_numeral.to_uppercase();
+                // similar logic as the numbers->digitgroups function
+                let roman_numeral_as_string = roman_numeral.to_uppercase();
                 let roman_numeral_length = roman_numeral_as_string.len();
-                if roman_numeral_length >= 4 {
-                    // split the characters in all possible spots
-                    // for each of those new arrays, that are the same order but just split differently,
-                    //      validate that each index is a valid roman numeral
-                    //      if they are all valid, that is a valid digit group array
-                    (0..roman_numeral_length).combinations(3)
-                    roman_numeral_as_string.chars()
-                    todo!()
+                if roman_numeral_length >= NUM_OF_OPS {
+                    const GROUPS_NEEDED: usize = 4;
+                    const SPLIT_INDEXES_NEEDED: usize = GROUPS_NEEDED - 1;
+                    Ok((0..roman_numeral_length - 1)
+                        .array_combinations::<SPLIT_INDEXES_NEEDED>()
+                        .filter_map(|[a, b, c]| {
+                            Some([
+                                RomanNumeral::from_str(&roman_numeral_as_string[..=a]).ok()?,
+                                RomanNumeral::from_str(&roman_numeral_as_string[a + 1..=b]).ok()?,
+                                RomanNumeral::from_str(&roman_numeral_as_string[b + 1..=c]).ok()?,
+                                RomanNumeral::from_str(&roman_numeral_as_string[c + 1..]).ok()?,
+                            ])
+                        })
+                        .filter_map(|rn_arr: [RomanNumeral; 4]| {
+                            DigitGroup::new(rn_arr.map(|rn| rn.as_u16() as u32).as_slice()).ok()
+                        })
+                        .collect_vec())
                 } else {
                     // if we can't actually make digit groups, then we parse it as a number, this isn't in the game but perhaps a user might input it
                     Ok(number_value_to_all_digit_groups(roman_numeral.as_u16()))
                 }
             }
+            _ => Err(ParseError::InvalidTokenValue(format!(
+                "Attempting to pull all possible RomanNumeral DigitGroups from a non-RomanNumeral token value: {:?}",
+                token_value
+            ))),
         }
     }
 
@@ -142,9 +153,9 @@ pub mod states {
                 Ok(TokenValue::Word(word)) => {
                     word_to_digit_group(word).map_or_else(|_e| vec![], |v| vec![v])
                 }
-                Ok(roman_token_value @ TokenValue::RomanNumeral(roman_numeral)) => {
-                    let test = roman_numeral_to_digit_group_values(&cypher_token);
-                    todo!();
+                Ok(roman_token_value @ TokenValue::RomanNumeral(_roman_numeral)) => {
+                    roman_numeral_to_digit_group_values(roman_token_value)
+                        .map_or_else(|_e| vec![], |v| v)
                 }
                 // this feels silly, so its at the bottom
                 Ok(TokenValue::NumericCore(nc_value)) => {
