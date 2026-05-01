@@ -1,6 +1,7 @@
 use core::num;
 use itertools::Itertools;
 use num_traits::{FromPrimitive, Num, ToPrimitive};
+use roman_numerals_rs::{InvalidRomanNumeralError, RomanNumeral};
 use std::{
     fmt::{Debug, Display},
     io,
@@ -26,15 +27,16 @@ impl<T> TokenNumber for T where
 pub(crate) enum TokenValue<T> {
     NumericCore(NumericCoreValue),
     Number(T),
+    RomanNumeral(RomanNumeral),
     Word(String),
-    // RomanNumeral(String),
 }
 
 impl<T: TokenNumber> TokenValue<T> {
-    fn new(raw_text: &str) -> Result<Self, ParseError> {
+    pub(crate) fn new(raw_text: &str) -> Result<Self, ParseError> {
         // utilities
         let is_number = |raw_text: &str| raw_text.chars().all(|c| c.is_ascii_digit());
         let is_word = |raw_text: &str| raw_text.chars().all(|c| c.is_ascii_alphabetic());
+        let is_roman_numeral = |raw_text: &str| raw_text.parse::<RomanNumeral>().is_ok();
 
         // actual creation
         match raw_text {
@@ -52,14 +54,14 @@ impl<T: TokenNumber> TokenValue<T> {
                     _ => Ok(Self::Number(parsed_number)),
                 }
             }
+            _ if is_roman_numeral(raw_text) => {
+                Ok(TokenValue::RomanNumeral(raw_text.parse::<RomanNumeral>()?))
+            }
             _ if is_word(raw_text) => Ok(Self::Word(raw_text.to_owned())),
             _ => Err(ParseError::InvalidTokenValue(format!(
                 "Unable to parse raw_text into valid input: {raw_text}"
             ))),
         }
-        // @TODO: add this
-        // let is_roman_numeral = |raw_text: &str| raw_text.chars().all(|c| "IVXLCDM".contains(c));
-        // _ if Self::is_roman_numeral(raw_text) => Ok(Self::RomanNumeral(raw_text.to_owned())),
     }
 
     // @TODO: this needs to get every possible split of the word,
@@ -95,6 +97,10 @@ pub(crate) struct CypherToken<T> {
 impl<T: TokenNumber> CypherToken<T> {
     pub(crate) fn get_token_value(&self) -> Result<&TokenValue<T>, &ParseError> {
         self.token_value.as_ref()
+    }
+
+    pub(crate) fn get_raw_text(&self) -> &str {
+        &self.raw_text
     }
 }
 
@@ -136,6 +142,18 @@ impl From<num::ParseIntError> for ParseError {
 impl From<num::ParseFloatError> for ParseError {
     fn from(value: num::ParseFloatError) -> Self {
         ParseError::FloatParseError(value)
+    }
+}
+
+impl From<InvalidRomanNumeralError> for ParseError {
+    fn from(value: InvalidRomanNumeralError) -> Self {
+        ParseError::InvalidTokenValue(value.to_string())
+    }
+}
+
+impl From<&ParseError> for ParseError {
+    fn from(value: &ParseError) -> Self {
+        value.clone()
     }
 }
 

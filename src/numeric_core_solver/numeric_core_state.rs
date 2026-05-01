@@ -1,4 +1,5 @@
 pub mod states {
+    use crate::numeric_core_solver::parsers::{CypherToken, ParseError, TokenNumber, TokenValue};
     use binary_ops::ops::{
         BinaryOp,
         BinaryOp::{Add, Divide, Multiply, Subtract},
@@ -11,8 +12,6 @@ pub mod states {
         fmt::{Debug, Display},
         num::ParseIntError,
     };
-
-    use crate::numeric_core_solver::parsers::{CypherToken, TokenNumber, TokenValue};
 
     mod binary_ops;
 
@@ -92,6 +91,41 @@ pub mod states {
         DigitGroup::new(&dg_values)
     }
 
+    fn roman_numeral_to_digit_group_values<T: TokenNumber>(
+        token_value: TokenValue<T>,
+    ) -> Result<Vec<DigitGroup>, ParseError> {
+        // validate that this is a roman numeral
+        // for the text that makes up a roman numeral
+        // split the characters in all possible spots
+        // for each of those new arrays, that are the same order but just split differently,
+        //      validate that each index is a valid roman numeral
+        //      if they are all valid, that is a valid digit group array
+
+        match token_value {
+            _ => Err(ParseError::InvalidTokenValue(format!(
+                "Attempting to pull all possible RomanNumeral DigitGroups from a non-RomanNumeral token value: {:?}",
+                token_value
+            ))),
+            TokenValue::RomanNumeral(roman_numeral) => {
+                //
+                let roman_numeral_as_string: String = roman_numeral.to_uppercase();
+                let roman_numeral_length = roman_numeral_as_string.len();
+                if roman_numeral_length >= 4 {
+                    // split the characters in all possible spots
+                    // for each of those new arrays, that are the same order but just split differently,
+                    //      validate that each index is a valid roman numeral
+                    //      if they are all valid, that is a valid digit group array
+                    (0..roman_numeral_length).combinations(3)
+                    roman_numeral_as_string.chars()
+                    todo!()
+                } else {
+                    // if we can't actually make digit groups, then we parse it as a number, this isn't in the game but perhaps a user might input it
+                    Ok(number_value_to_all_digit_groups(roman_numeral.as_u16()))
+                }
+            }
+        }
+    }
+
     // DigitGroup -> Option<NumericCoreValue>
     impl From<&DigitGroup> for Option<NumericCoreValue> {
         fn from(value: &DigitGroup) -> Self {
@@ -101,12 +135,16 @@ pub mod states {
 
     // token -> digitgroup
     impl<T: TokenNumber> From<&CypherToken<T>> for Vec<DigitGroup> {
-        fn from(token: &CypherToken<T>) -> Self {
-            match token.get_token_value() {
+        fn from(cypher_token: &CypherToken<T>) -> Self {
+            match cypher_token.get_token_value() {
                 Err(_e) => vec![],
                 Ok(TokenValue::Number(number)) => number_value_to_all_digit_groups(*number),
                 Ok(TokenValue::Word(word)) => {
                     word_to_digit_group(word).map_or_else(|_e| vec![], |v| vec![v])
+                }
+                Ok(roman_token_value @ TokenValue::RomanNumeral(roman_numeral)) => {
+                    let test = roman_numeral_to_digit_group_values(&cypher_token);
+                    todo!();
                 }
                 // this feels silly, so its at the bottom
                 Ok(TokenValue::NumericCore(nc_value)) => {

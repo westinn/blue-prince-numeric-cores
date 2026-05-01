@@ -9,21 +9,6 @@ use parsers::CypherToken;
 
 use crate::numeric_core_solver::parsers::TokenNumber;
 
-/*
-take cypher as matrix of strings
-convert to numbers
-for each number,
-    is number a valid NumericCoreIteration?
-        valid => create a NumericCoreIteration
-        else => return that number as the core
-
-for each NumericCoreIteration,
-    solve for NumericCore and get a single iteration output
-    is result a valid input to NumericCoreIteration?
-        valid => create a NumericCoreIteration and continue to solve
-        else => return that number as the core
-*/
-
 #[derive(Debug, Clone)]
 pub struct NumericCoreSolver<T> {
     cypher_structure: Vec<usize>,
@@ -35,11 +20,11 @@ pub struct NumericCoreSolver<T> {
 
 impl<T: TokenNumber> NumericCoreSolver<T> {
     pub fn new(input_content: &str) -> Self {
-        let trimmed_input = input_content.trim();
+        let trimmed_input = input_content.trim().to_ascii_uppercase();
 
-        let cypher_structure: Vec<usize> = parsers::compute_cypher_structure(trimmed_input);
+        let cypher_structure: Vec<usize> = parsers::compute_cypher_structure(&trimmed_input);
 
-        let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(trimmed_input);
+        let cypher_tokens: Vec<CypherToken<T>> = parsers::input_to_cypher_tokens(&trimmed_input);
 
         // @TODO: this is where we would begin stacking initial potential values.
         //        rather than a Vector of DG's, it'd be a Vec<Vec<DG>>. Or wrapped in Option, potentially, in this case.
