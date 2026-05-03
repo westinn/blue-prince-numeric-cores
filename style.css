@@ -1,11 +1,18 @@
 /* ==================================== */
 /* Globals */
 /* ==================================== */
+@font-face {
+  font-family: "Damned Architect";
+  src: url("./assets/Damned Architect.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   --blue-prince-blue: rgba(37, 89, 154, 1);
 }
 
-.bluePrinceFont {
+.bluePrinceTitle {
   font-family: "Montserrat", sans-serif;
   font-weight: 900;
   font-style: normal;
@@ -22,6 +29,15 @@
     -2px 2px 0 white,
     -2px 0px 0 white;
   /* -webkit-text-stroke: 0.03em white; */
+}
+
+.blueprintNotes {
+  font-family: "Damned Architect", cursive, sans-serif;
+  font-weight: 900;
+  font-style: normal;
+  font-optical-sizing: auto;
+
+  text-shadow: 1px 1px 1px black;
 }
 
 *,
@@ -42,7 +58,7 @@ body {
   height: 100vh;
   box-sizing: border-box;
   padding: 1em 0;
-  gap: 1em;
+  gap: 0.5em;
 
   /* Aesthetic */
   font-family: "Montserrat", sans-serif;
@@ -60,14 +76,14 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 0;
   width: 100%;
 
   .title {
+    margin: 0px;
     text-transform: uppercase;
     text-align: center;
 
-    font-size: clamp(1.2rem, 4vw, 4rem);
+    font-size: clamp(1.5rem, 5vw, 4rem);
   }
 
   .arrowDivider {
@@ -121,7 +137,7 @@ body {
   border-radius: 0.25em;
 
   .sectionHeader {
-    font-size: clamp(1.2rem, 2.5vw, 3rem);
+    font-size: clamp(1.2rem, 4vw, 2rem);
     margin: 0px;
   }
 
@@ -132,16 +148,18 @@ body {
     overflow: auto;
     resize: none;
 
-    font-size: clamp(1.2rem, 2.5vw, 2rem);
-    background-color: rgba(0, 0, 0, 0.2);
+    font-size: clamp(1rem, 7vw, 3rem);
+
     color: white;
+    text-shadow: 1px 1px 1px black;
+    background-color: rgba(0, 0, 0, 0.2);
   }
 
   .runButton {
     background-color: rgba(0, 0, 0, 0.5);
     color: white;
     padding: 10px;
-    font-size: large;
     cursor: pointer;
+    font-size: 1.2em;
   }
 }
