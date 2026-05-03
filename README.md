@@ -1,10 +1,12 @@
 # Blue Prince Numeric Core Solver
 
+[Click here to use it!](https://westinn.github.io/blue-prince-numeric-cores/)
+
 An over-engineered implementation of the Blue Prince Numeric Cores puzzles.
 
 I implemented this as an exercise for myself as I went through ["The Rust Book"](https://doc.rust-lang.org/book/). I had already written this in Python 3, but wanted to try a refactor within Rust. Since this was my first Rust program, I wanted to try and implement as many Rust features, and utilize the most "Rusty" design patterns as possible; even if it bloats this puzzle solution.
 
-I plan to have this accessible via WASM and Github Pages. The existing solutions are either all scripts or do not cover large inputs.
+I wanted a simpler solution than what I was finding, as the existing solutions are either terminal scripts or do not cover large inputs.
 
 ## Building
 
@@ -24,7 +26,7 @@ Or via the `build.sh` script provided.
 build.sh && python3 -m http.server
 ```
 
-This will provide a localhost server at `http://[::1]:8000/`.
+This will provide a localhost server at `http://0.0.0.0:8000/`.
 
 Or more simply, via the `run.sh` script provided.
 
