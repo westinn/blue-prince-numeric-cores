@@ -35,5 +35,6 @@ Or more simply, via the `run.sh` script provided.
 - ~~Update styling for GUI to match the game, Blue Prince (somewhat at least!).~~
 - ~~Deploy to Github Pages.~~
 - ~~Add a release pipeline that releases to Github Pages.~~
+- Might clamp the possible return `NumericCore`s to be within 1-26. Currently, they are expanded past that. For the purposes of the actual game, no input should result in anything but a `NumericCoreValue` of 1-26.
 - Include `tokei` in release pipeline to add code line counter to README. Just for fun!
 - Add tests within Rust.
