@@ -1,0 +1,20 @@
+{
+  "name": "numeric_cores",
+  "type": "module",
+  "description": "A solver for Blue Prince's \"Numeric Core\" puzzles.",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/westinn/blue-prince-numeric-cores"
+  },
+  "files": [
+    "numeric_cores_bg.wasm",
+    "numeric_cores.js",
+    "numeric_cores.d.ts"
+  ],
+  "main": "numeric_cores.js",
+  "types": "numeric_cores.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
