@@ -21,7 +21,9 @@ jobs:
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - name: Build WASM (Web Target)
-        run: wasm-pack build --target web
+        run: |
+          wasm-pack build --target web
+          rm -f pkg/.gitignore
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
