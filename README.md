@@ -10,7 +10,7 @@ I plan to have this accessible via WASM and Github Pages. The existing solutions
 
 The Rust portion is it's own library and used to take in a file as input. Since it now targets a basic web GUI, it now needs to be built using [`wasm-pack`](https://github.com/wasm-bindgen/wasm-pack):
 
-```
+```bash
 wasm-pack build --target web
 ```
 
@@ -20,7 +20,7 @@ Or via the `build.sh` script provided.
 
 `cd` into the root of the project and run:
 
-```
+```bash
 build.sh && python3 -m http.server
 ```
 
@@ -29,8 +29,10 @@ This will provide a localhost server at `http://[::1]:8000/`.
 Or more simply, via the `run.sh` script provided.
 
 ## TODO
-- Update styling for GUI to match the game, Blue Prince (somewhat at least!).
-- Deploy to Github Pages.
+
+~~- Update styling for GUI to match the game, Blue Prince (somewhat at least!).~~
+~~- Deploy to Github Pages.~~
+
 - Add tests within Rust.
 - Add a release pipeline that releases to Github Pages.
 - Include `tokei` in release pipeline to add code line counter to README. Just for fun!
