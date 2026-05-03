@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Blue Prince Numeric Core Solver</title>
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Style -->
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+
+  <body class="body">
+    <!-- Title -->
+    <div class="titleSection">
+      <h1 class="title bluePrinceTitle">Blue Prince Numeric Core Solver</h1>
+      <div class="arrowDivider">
+        <hr />
+      </div>
+    </div>
+
+    <!-- Inputs -->
+    <div class="inputs">
+      <h2 class="sectionHeader bluePrinceTitle">Puzzle Input:</h2>
+      <textarea
+        class="puzzleInput blueprintNotes"
+        name="puzzleInput"
+        placeholder="Enter your input here..."
+        autocapitalize
+        autofocus
+      ></textarea>
+      <button class="runButton blueprintNotes">Solve</button>
+    </div>
+
+    <!-- Outputs -->
+    <div class="outputs">
+      <h2 class="sectionHeader bluePrinceTitle">Cypher Output:</h2>
+      <textarea
+        class="puzzleOutput blueprintNotes"
+        name="puzzleOutput"
+        placeholder="Results will be here. None means there was no valid result. that means your input was incorrect."
+        autocapitalize
+      ></textarea>
+    </div>
+  </body>
+
+  <!-- Rust -> WASM -->
+  <script type="module">
+    // Import the wasm-pack generated code
+    import init, { process_input_from_web } from "./pkg/numeric_cores.js";
+    let run = async () => {
+      // Load the WebAssembly engine
+      await init();
+      document.querySelector(".runButton").addEventListener("click", () => {
+        // Grab the input from the box
+        const inputText = document.querySelector(".puzzleInput").value;
+        // Call Rust function
+        const result = process_input_from_web(inputText);
+        // Print the result
+        document.querySelector(".puzzleOutput").value = result;
+      });
+    };
+    run();
+  </script>
+</html>
